@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
  
-from app.config.settings import Settings
+from app.config.settings import settings
 from app.schemas.events import EventPayload
 from app.schemas.recommendation import AgentResponse
 

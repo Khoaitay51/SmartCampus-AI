@@ -1,0 +1,81 @@
+{
+  "event": {
+    "event_id": "c57558b5-3e6d-4582-ac5d-d6105c727ca0",
+    "event_type": "temperature_anomaly",
+    "room_id": "863f62c4-880e-473a-a52d-d114566d7aef",
+    "timestamp": "2026-09-10T21:00:00Z",
+    "event_data": {
+      "measured_temp": 32.5
+    },
+    "operational_context": {
+      "room": {
+        "room_id": "863f62c4-880e-473a-a52d-d114566d7aef",
+        "room_name": "Phòng A101",
+        "room_type": "lecture_hall",
+        "current_mode": "LECTURE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-10T20:00:00Z",
+        "window_end": "2026-09-10T21:00:00Z",
+        "temperature": {
+          "min": 24.0,
+          "max": 32.5,
+          "avg": 28.0,
+          "latest": 32.5
+        },
+        "humidity": {
+          "min": 50.0,
+          "max": 65.0,
+          "avg": 58.0,
+          "latest": 60.0
+        },
+        "co2": {
+          "min": 400.0,
+          "max": 800.0,
+          "avg": 600.0,
+          "latest": 720.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 0.05,
+          "avg": 0.01,
+          "latest": 0.02
+        },
+        "air_quality": {
+          "min": 70.0,
+          "max": 95.0,
+          "avg": 85.0,
+          "latest": 88.0
+        }
+      },
+      "occupancy": {
+        "current_count": 45,
+        "total_in": 50,
+        "total_out": 5,
+        "trend": "phong hoc"
+      },
+      "active_session": null,
+      "recent_events": []
+    }
+  },
+  "response": {
+    "event_id": "c57558b5-3e6d-4582-ac5d-d6105c727ca0",
+    "recommendation": {
+      "tool_name": "set_fan",
+      "tool_params": {
+        "room_id": "863f62c4-880e-473a-a52d-d114566d7aef",
+        "state": "on"
+      },
+      "reason": "Nhiệt độ phòng tăng cao",
+      "confidence": 0.85,
+      "urgency": "medium"
+    },
+    "alternatives": [],
+    "analysis": "Nhiệt độ phòng tăng trong giờ học, đề xuất bật quạt làm mát.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": []
+  },
+  "recorded_at": "2026-09-10T15:01:28.529585+00:00"
+}

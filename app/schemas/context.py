@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID
-
 from pydantic import BaseModel
 
+class SensorsStats(BaseModel):
+    min: float
+    max: float
+    avg: float
+    latest: float
 
 class RoomInfo(BaseModel):
     room_id: UUID
@@ -13,14 +17,6 @@ class RoomInfo(BaseModel):
     current_mode: str  
     smoke_state: str
 
-
-class SensorsStats(BaseModel):
-    min: float
-    max: float
-    avg: float
-    latest: float
-
-
 class TelemetrySummary(BaseModel):
     window_start: datetime
     window_end: datetime
@@ -28,13 +24,14 @@ class TelemetrySummary(BaseModel):
     humidity: SensorsStats
     co2: SensorsStats
     smoke_value: SensorsStats
+    air_quality: SensorsStats
 
 
 class Occupancy(BaseModel):
     current_count: int
     total_in: int
     total_out: int
-    trend: str
+    trend: str # Phong hoc | phong thi
 
 
 class ActiveSession(BaseModel):
