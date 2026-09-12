@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.agent.agent import ReActXenAgent
 from app.config.settings import settings
-from app.gateway.llm_client import AnthropicLLMClient, LLMClient
+from app.gateway.llm_client import GeminiLLMClient, LLMClient
 from app.gateway.rag import execute_rag_tool
 from app.logging.audit import save_audit_record
 from app.schemas.context import OperationalContext
@@ -28,7 +28,7 @@ def get_agent(
 ) -> ReActXenAgent:
     """Khởi tạo instance ReActXenAgent với LLM Client và RAG tool executor."""
     return ReActXenAgent(
-        llm=llm or AnthropicLLMClient(),
+        llm=llm or GeminiLLMClient(),
         execute_rag_tool=rag_executor or execute_rag_tool,
     )
 

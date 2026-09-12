@@ -2,7 +2,7 @@ from __future__ import annotations
  
 from .client import GatewayClient, GatewayError
 from .db import AgentStateDB, get_db
-from .llm_client import AnthropicLLMClient, LLMClient
+from .llm_client import GeminiLLMClient, LLMClient
 from .rag import RagBudgetExceeded, RagCallBudget, RagClient, execute_rag_tool
 from .recommendations import ExecutionResult, RecommendationPayload, RecommendationsClient, ToolCall
 from .rooms import RoomsClient
@@ -21,7 +21,7 @@ __all__ = [
     "ExecutionResult",
     "ToolCall",
     "LLMClient",
-    "AnthropicLLMClient",
+    "GeminiLLMClient",
     "AgentStateDB",
     "get_db",
 ]

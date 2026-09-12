@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     )
 
     # llm.py
-    ANTHROPIC_API_KEY: str = Field(default="", description="API key cho Anthropic Claude")
-    AGENT: str = Field(default="claude-3-7-sonnet-20250219", description="Model dùng cho ReAct/Review/Reflect")
+    GEMINI_API_KEY: str = Field(default="", description="API key cho Google Gemini")
+    AGENT: str = Field(default="gemini-2.5-flash", description="Model Gemini dùng cho ReAct/Review/Reflect")
 
     # db.py
     DATABASE_URL: str = Field(

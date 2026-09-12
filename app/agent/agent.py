@@ -26,7 +26,7 @@ CONFIDENCE_THRESHOLD = 0.5
 
 
 class LLMClient(Protocol):
-    """Bọc LLM call để dễ test/mock — implement thật dùng Anthropic SDK ở llm_client.py."""
+    """Bọc LLM call để dễ test/mock — implement thật dùng Google Gemini SDK ở llm_client.py."""
 
     async def complete(self, system_prompt: str) -> str: ...
 
