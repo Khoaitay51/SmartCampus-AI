@@ -196,6 +196,31 @@ class TestEvaluateAndAgent(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ctx.exception.status_code, 422)
 
+    async def test_evaluate_event_structured_trace(self):
+        """Kiểm tra structured trace ghi lại đúng danh sách các quyết định theo step chuẩn Production."""
+        payload = make_sample_payload(room_mode="LECTURE")
+        event_id = payload["event_id"]
+
+        react_output = (
+            f'Self-Ask: Đánh giá tình trạng phòng?\n'
+            f'Thought: Kết luận luôn.\n'
+            f'Action: finish\n'
+            f'Action Input: {{"final_json": {{"event_id": "{event_id}", "analysis": "Bình thường.", "skip": true, "skip_reason": "normal"}}}}'
+        )
+        review_output = json.dumps({"status": "Accomplished", "reasoning": "ok", "suggestions": None})
+
+        mock_llm = MockLLM(responses=[react_output, review_output])
+        custom_agent = get_agent(llm=mock_llm)
+
+        with patch.object(evaluate_module, "get_agent", return_value=custom_agent):
+            response = await evaluate_event(payload)
+
+        self.assertGreater(len(response.structured_trace), 0)
+        first_step = response.structured_trace[0]
+        self.assertEqual(first_step.step, 1)
+        self.assertEqual(first_step.decision, "finish")
+        self.assertEqual(first_step.reason_code, "GOAL_ACCOMPLISHED")
+
 
 if __name__ == "__main__":
     unittest.main()

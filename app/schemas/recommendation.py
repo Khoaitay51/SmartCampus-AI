@@ -31,6 +31,16 @@ class ToolCallLogEntry(BaseModel):
     result_summary: str
 
 
+class StructuredTraceStep(BaseModel):
+    step: int
+    decision: str
+    tool: str | None = None
+    reason_code: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list)
+    observation_summary: str | None = None
+    action_input: dict = Field(default_factory=dict)
+
+
 class AgentResponse(BaseModel):
     event_id: UUID
     recommendation: ToolRecommendation | None = None
@@ -39,3 +49,4 @@ class AgentResponse(BaseModel):
     skip: bool
     skip_reason: str | None = None
     tool_calls_log: list[ToolCallLogEntry] = []
+    structured_trace: list[StructuredTraceStep] = []

@@ -1,0 +1,23 @@
+services:
+  ai-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartcampus-ai
+    restart: unless-stopped
+    working_dir: /app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smartcampus:change-this-local-password@host.docker.internal:5432/smartcampus
+      BACKEND_BASE_URL: http://host.docker.internal:8000
+      AUDIT_OUTPUT_DIR: /app/output
+    ports:
+      - "8001:8000" # Mở port 8001 ra ngoài máy thật, trỏ vào 8000 bên trong container
+    volumes:
+      - .:/app
+      - ./output:/app/output
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Chạy server FastAPI liên tục thay vì chạy file demo
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

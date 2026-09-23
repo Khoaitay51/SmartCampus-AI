@@ -8,12 +8,14 @@ safety/ + agent state (SELF_EXECUTE / HUMAN_INTERVENTION). Ở đây chỉ lo ph
 I/O + đóng gói payload đúng contract.
 """
 from __future__ import annotations
-
+import httpx
 from typing import Any, Literal
-
 from pydantic import BaseModel, Field
-
 from .client import GatewayClient
+from app.schemas.recommendation import AgentResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 Urgency = Literal["low", "medium", "high"]
 Mode = Literal["self_execute", "human_intervention"]
@@ -101,3 +103,45 @@ class RecommendationsClient:
         if pending_approval_id:
             body["pending_approval_id"] = pending_approval_id
         return body
+
+    async def post_recommendation(event_id: str,  agent_response: AgentResponse) -> dict:
+
+        # ep kieu du lieu noi bo thanh JSON chuan theo contract cua file AI_AGENT_INTEGRATIOn
+        payload = {
+            "event_id": event_id,
+            "recommendation": None,
+            "alternatives": [alt.model_dump() for alt in agent_response.alternatives] if agent_response.alternatives else [],
+            "analysis": agent_response.analysis,
+            "skip": agent_response.skip,
+            "skip_reason": agent_response.skip,
+        }
+
+        if not agent_response.skip and agent_response.recommendation:
+            payload["recommendation"] = {
+                "tool_name": agent_response.recommendation.tool_name,
+                "tool_params": agent_response.recommendation.tool_params,
+                "reason": agent_response.recommendation.reason,
+                "confidence": agent_response.recommendation.confidence,
+                "urgency": agent_response.recommendation.urgency,
+            }
+
+        # Log payload de de dang debug audit trail
+        logger.info(f"Dang gui recommendation cho event {event_id} toi Backend.")
+
+        # Giao tiếp với FastAPI Gateway qua HTTP POST
+        endpoint = f"{settings.GATEWAY_API_URL}/ai/recommend"
+        
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(endpoint, json=payload, timeout=10.0)
+                response.raise_for_status()
+                
+                # Backend sẽ trả về trạng thái (VD: {"recommendation_id": "...", "status": "pending_approval"})
+                result = response.json()
+                logger.info(f"Backend phản hồi: {result['status']}")
+                return result
+                
+            except httpx.HTTPError as e:
+                logger.error(f"Lỗi khi gửi recommendation tới Gateway: {e}")
+                # Xử lý retry logic hoặc ghi log error tùy vào chiến lược safety của hệ thống
+                raise

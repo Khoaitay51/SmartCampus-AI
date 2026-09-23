@@ -1,0 +1,92 @@
+{
+  "event": {
+    "event_id": "baad72c5-bab3-4cf4-90b1-b907a2a5f4f4",
+    "event_type": "temperature_anomaly",
+    "room_id": "f616de47-5e1d-4cf8-a92d-166270039b74",
+    "timestamp": "2026-09-10T21:00:00Z",
+    "event_data": {
+      "measured_temp": 32.5
+    },
+    "operational_context": {
+      "room": {
+        "room_id": "f616de47-5e1d-4cf8-a92d-166270039b74",
+        "room_name": "Phòng A101",
+        "room_type": "lecture_hall",
+        "current_mode": "LECTURE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-10T20:00:00Z",
+        "window_end": "2026-09-10T21:00:00Z",
+        "temperature": {
+          "min": 24.0,
+          "max": 32.5,
+          "avg": 28.0,
+          "latest": 32.5
+        },
+        "humidity": {
+          "min": 50.0,
+          "max": 65.0,
+          "avg": 58.0,
+          "latest": 60.0
+        },
+        "co2": {
+          "min": 400.0,
+          "max": 800.0,
+          "avg": 600.0,
+          "latest": 720.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 0.05,
+          "avg": 0.01,
+          "latest": 0.02
+        },
+        "air_quality": {
+          "min": 70.0,
+          "max": 95.0,
+          "avg": 85.0,
+          "latest": 88.0
+        }
+      },
+      "occupancy": {
+        "current_count": 45,
+        "total_in": 50,
+        "total_out": 5,
+        "trend": "phong hoc"
+      },
+      "active_session": null,
+      "recent_events": []
+    }
+  },
+  "response": {
+    "event_id": "baad72c5-bab3-4cf4-90b1-b907a2a5f4f4",
+    "recommendation": null,
+    "alternatives": [],
+    "analysis": "Bình thường.",
+    "skip": true,
+    "skip_reason": "normal",
+    "tool_calls_log": [],
+    "structured_trace": [
+      {
+        "step": 1,
+        "decision": "finish",
+        "tool": null,
+        "reason_code": "GOAL_ACCOMPLISHED",
+        "evidence_ids": [
+          "baad72c5-bab3-4cf4-90b1-b907a2a5f4f4"
+        ],
+        "observation_summary": "finished",
+        "action_input": {
+          "final_json": {
+            "event_id": "baad72c5-bab3-4cf4-90b1-b907a2a5f4f4",
+            "analysis": "Bình thường.",
+            "skip": true,
+            "skip_reason": "normal"
+          }
+        }
+      }
+    ]
+  },
+  "recorded_at": "2026-09-22T03:57:03.696912+00:00"
+}

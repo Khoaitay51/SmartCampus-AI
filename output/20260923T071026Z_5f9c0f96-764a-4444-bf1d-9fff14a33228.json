@@ -1,0 +1,178 @@
+{
+  "event": {
+    "event_id": "5f9c0f96-764a-4444-bf1d-9fff14a33228",
+    "event_type": "temperature_anomaly",
+    "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+    "timestamp": "2026-09-22T08:30:00+07:00",
+    "event_data": {
+      "temperature": 36.2,
+      "humidity": 71.0,
+      "co2": 1450,
+      "trigger": "threshold_exceeded",
+      "threshold": 34.0
+    },
+    "operational_context": {
+      "room": {
+        "room_name": "Phòng A101",
+        "room_type": "lecture_hall",
+        "current_mode": "LECTURE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T08:00:00+07:00",
+        "window_end": "2026-09-22T08:30:00+07:00",
+        "temperature": {
+          "min": 28.5,
+          "max": 36.2,
+          "avg": 33.1,
+          "latest": 36.2
+        },
+        "humidity": {
+          "min": 60.0,
+          "max": 75.0,
+          "avg": 68.0,
+          "latest": 71.0
+        },
+        "co2": {
+          "min": 800.0,
+          "max": 1450.0,
+          "avg": 1100.0,
+          "latest": 1450.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 2.0,
+          "avg": 0.5,
+          "latest": 0.0
+        },
+        "air_quality": {
+          "min": 55.0,
+          "max": 80.0,
+          "avg": 65.0,
+          "latest": 58.0
+        }
+      },
+      "occupancy": {
+        "current_count": 38,
+        "total_in": 40,
+        "total_out": 2,
+        "trend": "stable"
+      },
+      "active_session": {
+        "session_id": "3b91f09f-cce8-4c10-a705-3a5dd99e41b3",
+        "class_code": "CS101",
+        "lecturer_name": "TS. Nguyen Van A",
+        "enrolled_count": 40,
+        "checked_in_count": 38,
+        "started_at": "2026-09-22T07:30:00+07:00",
+        "attendance_deadline": "2026-09-22T07:45:00+07:00",
+        "is_exam": false
+      },
+      "recent_events": [
+        {
+          "type": "temperature_anomaly",
+          "time": "2026-09-22T08:10:00+07:00",
+          "extra": {
+            "temperature": 34.5
+          }
+        }
+      ]
+    }
+  },
+  "response": {
+    "event_id": "5f9c0f96-764a-4444-bf1d-9fff14a33228",
+    "recommendation": {
+      "tool_name": "set_fan",
+      "tool_params": {
+        "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+        "state": "on"
+      },
+      "reason": "Nhiệt độ phòng A101 đang tăng liên tục (34.5°C lúc 08:10 lên 36.2°C lúc 08:30, vượt ngưỡng 34.0°C) kèm CO2 ở mức cao (1450 ppm) khi có 38 học sinh trong lớp. Cần bật quạt thông gió để làm mát và thông thoáng không khí.",
+      "confidence": 0.88,
+      "urgency": "medium"
+    },
+    "alternatives": [],
+    "analysis": "Nhiệt độ hiện tại đạt 36.2°C, cao hơn ngưỡng 34.0°C và có xu hướng tăng liên tục từ 28.5°C lên 36.2°C trong 30 phút qua. Phòng đang trong chế độ LECTURE với 38 người. Nồng độ CO2 tăng cao tới 1450 ppm. Việc bật quạt thông gió (set_fan: on) được phép trong chế độ LECTURE và phù hợp để giải quyết vấn đề hạ nhiệt và điều hòa không khí.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": [
+      {
+        "tool": "get_telemetry",
+        "params": {
+          "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+          "metric": "temperature",
+          "window": "1h"
+        },
+        "result_summary": "Lỗi khi thực thi RAG tool 'get_telemetry': Không kết nối được Gateway sau 3 lần thử: [Errno 11001] getaddrinfo failed"
+      },
+      {
+        "tool": "get_predictions",
+        "params": {
+          "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+          "metric": "temperature",
+          "horizon": "15m"
+        },
+        "result_summary": "Lỗi khi thực thi RAG tool 'get_predictions': Không kết nối được Gateway sau 3 lần thử: [Errno 11001] getaddrinfo failed"
+      }
+    ],
+    "structured_trace": [
+      {
+        "step": 1,
+        "decision": "call_tool",
+        "tool": "get_telemetry",
+        "reason_code": "Xu hướng nhiệt độ phòng A101 trong 1 giờ qua như thế nào?",
+        "evidence_ids": [
+          "call_get_telemetry_1"
+        ],
+        "observation_summary": "Lỗi khi thực thi RAG tool 'get_telemetry': Không kết nối được Gateway sau 3 lần thử: [Errno 11001] getaddrinfo failed",
+        "action_input": {
+          "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+          "metric": "temperature",
+          "window": "1h"
+        }
+      },
+      {
+        "step": 2,
+        "decision": "call_tool",
+        "tool": "get_predictions",
+        "reason_code": "Dự báo nhiệt độ trong tương lai gần (EWMA prediction) cho phòng A101 như thế nào?",
+        "evidence_ids": [
+          "call_get_predictions_2"
+        ],
+        "observation_summary": "Lỗi khi thực thi RAG tool 'get_predictions': Không kết nối được Gateway sau 3 lần thử: [Errno 11001] getaddrinfo failed",
+        "action_input": {
+          "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+          "metric": "temperature",
+          "horizon": "15m"
+        }
+      },
+      {
+        "step": 3,
+        "decision": "finish",
+        "tool": null,
+        "reason_code": "GOAL_ACCOMPLISHED",
+        "evidence_ids": [
+          "5f9c0f96-764a-4444-bf1d-9fff14a33228"
+        ],
+        "observation_summary": "finished",
+        "action_input": {
+          "final_json": {
+            "skip": false,
+            "recommendation": {
+              "tool_name": "set_fan",
+              "tool_params": {
+                "room_id": "f542866e-006e-46db-8503-810c4b30fdc9",
+                "state": "on"
+              },
+              "reason": "Nhiệt độ phòng A101 đang tăng liên tục (34.5°C lúc 08:10 lên 36.2°C lúc 08:30, vượt ngưỡng 34.0°C) kèm CO2 ở mức cao (1450 ppm) khi có 38 học sinh trong lớp. Cần bật quạt thông gió để làm mát và thông thoáng không khí.",
+              "confidence": 0.88,
+              "urgency": "medium"
+            },
+            "analysis": "Nhiệt độ hiện tại đạt 36.2°C, cao hơn ngưỡng 34.0°C và có xu hướng tăng liên tục từ 28.5°C lên 36.2°C trong 30 phút qua. Phòng đang trong chế độ LECTURE với 38 người. Nồng độ CO2 tăng cao tới 1450 ppm. Việc bật quạt thông gió (set_fan: on) được phép trong chế độ LECTURE và phù hợp để giải quyết vấn đề hạ nhiệt và điều hòa không khí."
+          }
+        }
+      }
+    ]
+  },
+  "recorded_at": "2026-09-23T07:10:26.043390+00:00"
+}

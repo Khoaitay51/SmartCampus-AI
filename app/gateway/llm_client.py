@@ -6,6 +6,7 @@ với ReActXenAgent qua method complete().
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -122,7 +123,7 @@ class LLMClient:
 
     def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         effective_key = api_key or _cfg("GEMINI_API_KEY", None)
-        self.model = model or _cfg("AGENT", _cfg("GEMINI_MODEL", "gemini-2.5-flash"))
+        self.model = model or _cfg("AGENT", _cfg("GEMINI_MODEL", "gemini-3.6-flash"))
         self.max_tokens = _cfg("AGENT_LLM_MAX_TOKENS", 1500)
         self.temperature = _cfg("AGENT_TEMPERATURE", 0.1)
 
@@ -140,21 +141,33 @@ class LLMClient:
             raise RuntimeError(
                 "Thư viện 'google-genai' chưa được cài đặt trong môi trường. Vui lòng chạy: pip install google-genai"
             )
-        try:
-            config = types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=self.temperature,
-                max_output_tokens=self.max_tokens,
-            )
-            response = await self._client.aio.models.generate_content(
-                model=self.model,
-                contents="Hãy thực hiện bước tiếp theo theo đúng định dạng được yêu cầu.",
-                config=config,
-            )
-            return response.text or ""
-        except Exception as exc:
-            logger.error("Gemini complete call thất bại: %s", exc)
-            raise
+        max_retries = 2 # Do request nhiều thì limit gemini không đủ nên để là 2: chuẩn thì nên cho lên 3
+        backoff_delay = 6.0
+        for attempt in range(1, max_retries + 1):
+            try:
+                config = types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=self.temperature,
+                    max_output_tokens=self.max_tokens,
+                )
+                response = await self._client.aio.models.generate_content(
+                    model=self.model,
+                    contents="Hãy thực hiện bước tiếp theo theo đúng định dạng được yêu cầu.",
+                    config=config,
+                )
+                return response.text or ""
+            except Exception as exc:
+                err_msg = str(exc)
+                if ("429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg or "Quota exceeded" in err_msg) and attempt < max_retries:
+                    wait_time = backoff_delay * attempt
+                    logger.warning(
+                        "Gemini API rate limit 429 hit (lần %d/%d). Vượt quá quota Free Tier, tự động đợi %.1fs trước khi retry...",
+                        attempt, max_retries, wait_time
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+                logger.error("Gemini complete call thất bại: %s", exc)
+                raise
 
 
 # Alias định danh rõ ràng

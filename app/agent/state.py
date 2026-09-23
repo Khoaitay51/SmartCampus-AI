@@ -15,12 +15,23 @@ class TrajectoryStep(BaseModel):
     action_input: dict
     observation: str
 
+class StructuredTraceStep(BaseModel):
+    step: int
+    decision: str
+    tool: str | None = None
+    reason_code: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list)
+    observation_summary: str | None = None
+    action_input: dict = Field(default_factory=dict)
+
 class AgentRunState(BaseModel):
     event: EventPayload
     context: OperationalContext
 
     trajectory: list[TrajectoryStep] = Field(default_factory=list)
+    structured_trace: list[StructuredTraceStep] = Field(default_factory=list)
     tool_calls_log: list[ToolCallLogEntry] = Field(default_factory=list)
+    past_experience: str = ""
 
     reflections: list[str] = Field(default_factory=list)
 

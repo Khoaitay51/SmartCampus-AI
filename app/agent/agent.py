@@ -4,6 +4,7 @@ agent/agent.py
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Awaitable, Callable, Protocol
 
@@ -14,15 +15,59 @@ from app.agent.output_parser import (
     parse_react_step,
     parse_review_output,
 )
-from app.agent.state import AgentRunState, TrajectoryStep
+from app.agent.state import AgentRunState, StructuredTraceStep, TrajectoryStep
 from app.schemas.context import OperationalContext
 from app.schemas.events import EventPayload
 from app.schemas.recommendation import AgentResponse, ToolCallLogEntry
-from app.tools.registry import ACTION_TOOLS, RAG_TOOLS, FINISH_TOOL, is_tool_allowed_in_mode, render_tool_desc # note tam
+from app.tools.registry import ACTION_TOOLS, RAG_TOOLS, FINISH_TOOL, is_tool_allowed_in_mode, render_tool_desc
 
 logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLD = 0.5
+
+
+async def retrieve_past_experience(current_context_text: str, top_k: int = 3) -> str:
+    """
+    Truy vấn pgvector LTM để tìm các quyết định đã được human_approved=True
+    có bối cảnh tương tự nhất (cosine distance). Kết quả được nhét vào System Prompt
+    như Dynamic Few-Shot examples.
+
+    Trả về chuỗi rỗng nếu DB không available hoặc chưa có kinh nghiệm nào.
+    """
+    try:
+        from app.database.session import async_session
+        from app.database.models import AgentExperienceLog
+        from app.gateway.embeddings import get_embedding
+        from sqlalchemy import select
+
+        query_vector = await get_embedding(current_context_text)
+
+        async with async_session() as db:
+            stmt = (
+                select(AgentExperienceLog)
+                .where(AgentExperienceLog.human_approved == True)  # noqa: E712
+                .order_by(AgentExperienceLog.context_embedding.cosine_distance(query_vector))
+                .limit(top_k)
+            )
+            result = await db.execute(stmt)
+            past_logs = result.scalars().all()
+
+        if not past_logs:
+            return ""
+
+        lines = ["## Kinh nghiệm từ quá khứ (Dynamic Few-Shot — được con người duyệt):"]
+        for log in past_logs:
+            tool_str = log.recommended_tool or "(skip)"
+            lines.append(
+                f"- Khi gặp sự kiện `{log.event_type}` với bối cảnh tương tự, "
+                f"tôi đã dùng tool `{tool_str}` và được quản trị viên duyệt."
+            )
+        lines.append("(Dùng những kinh nghiệm trên để điều chỉnh reasoning, không sao chép mù quáng.)")
+        return "\n".join(lines)
+
+    except Exception as exc:
+        logger.debug("Không lấy được kinh nghiệm từ LTM (không ảnh hưởng agent): %s", exc)
+        return ""
 
 
 class LLMClient(Protocol):
@@ -44,6 +89,16 @@ class ReActXenAgent:
         event_context = prompts.build_event_context(
             event.model_dump_json(), context.model_dump_json()
         )
+
+        # Lấy kinh nghiệm từ pgvector LTM để inject vào prompt (Dynamic Few-Shot)
+        context_text_for_ltm = (
+            f"Event: {event.event_type.value}. "
+            f"Context: {event.operational_context}"
+        )
+        past_experience_str = await retrieve_past_experience(context_text_for_ltm)
+        if past_experience_str:
+            logger.info("Đã lấy được kinh nghiệm từ LTM, inject vào prompt.")
+        state.past_experience = past_experience_str
 
         final_answer: AgentResponse | None = None
 
@@ -77,6 +132,7 @@ class ReActXenAgent:
 
         final_answer = self._final_safety_check(final_answer, context)
         final_answer.tool_calls_log = state.tool_calls_log
+        final_answer.structured_trace = state.structured_trace
         return final_answer
 
     # ReAct + Self-Ask
@@ -84,6 +140,7 @@ class ReActXenAgent:
         available_tools = RAG_TOOLS + ACTION_TOOLS + [FINISH_TOOL]
 
         for _ in range(state.max_react_step):
+            step_num = len(state.structured_trace) + 1
             system_prompt = prompts.build_react_prompt(
                 event_type=state.event.event_type,
                 tool_desc=render_tool_desc(available_tools),
@@ -92,6 +149,7 @@ class ReActXenAgent:
                 reflections=state.render_reflections(),
                 event_context=event_context,
                 scratchpad=state.render_scratchpad(),
+                past_experience=getattr(state, "past_experience", ""),
             )
 
             raw_output = await self._llm.complete(system_prompt)
@@ -101,6 +159,14 @@ class ReActXenAgent:
                 logger.warning("Parse loi, ghi nhan va dung vong ReAct: %s", e)
                 state.trajectory.append(
                     TrajectoryStep(thought="(parse error)", action="finish", action_input={}, observation=str(e))
+                )
+                state.structured_trace.append(
+                    StructuredTraceStep(
+                        step=step_num,
+                        decision="parse_error",
+                        reason_code="OUTPUT_PARSE_ERROR",
+                        observation_summary=str(e)[:300],
+                    )
                 )
                 return None
 
@@ -114,11 +180,30 @@ class ReActXenAgent:
                             action_input=step.action_input, observation=f"invalid final_json: {e}",
                         )
                     )
+                    state.structured_trace.append(
+                        StructuredTraceStep(
+                            step=step_num,
+                            decision="finish",
+                            reason_code="INVALID_FINAL_JSON",
+                            observation_summary=f"invalid final_json: {e}",
+                            action_input=step.action_input,
+                        )
+                    )
                     return None
                 state.trajectory.append(
                     TrajectoryStep(
                         self_ask=step.self_ask, thought=step.thought, action=step.action,
                         action_input=step.action_input, observation="finished",
+                    )
+                )
+                state.structured_trace.append(
+                    StructuredTraceStep(
+                        step=step_num,
+                        decision="finish",
+                        reason_code="GOAL_ACCOMPLISHED",
+                        observation_summary="finished",
+                        action_input=step.action_input,
+                        evidence_ids=[str(state.event.event_id)],
                     )
                 )
                 return answer
@@ -133,6 +218,16 @@ class ReActXenAgent:
                     TrajectoryStep(
                         self_ask=step.self_ask, thought=step.thought, action=step.action,
                         action_input=step.action_input, observation=observation,
+                    )
+                )
+                state.structured_trace.append(
+                    StructuredTraceStep(
+                        step=step_num,
+                        decision="invalid_action",
+                        tool=step.action,
+                        reason_code="INVALID_RAG_TOOL",
+                        observation_summary=observation[:300],
+                        action_input=step.action_input,
                     )
                 )
                 continue
@@ -150,6 +245,17 @@ class ReActXenAgent:
                 TrajectoryStep(
                     self_ask=step.self_ask, thought=step.thought, action=step.action,
                     action_input=step.action_input, observation=observation,
+                )
+            )
+            state.structured_trace.append(
+                StructuredTraceStep(
+                    step=step_num,
+                    decision="call_tool",
+                    tool=step.action,
+                    reason_code=step.self_ask or "RAG_TOOL_QUERY",
+                    observation_summary=observation[:300],
+                    action_input=step.action_input,
+                    evidence_ids=[f"call_{step.action}_{step_num}"],
                 )
             )
 

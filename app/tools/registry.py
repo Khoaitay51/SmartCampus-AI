@@ -94,45 +94,39 @@ ACTION_TOOLS: list[ToolDefinition] = [
     ToolDefinition(
         name="set_fan",
         description="Bật hoặc tắt quạt thông gió/làm mát trong phòng.",
-        parameters={"room_id": "string (uuid)", "state": "enum ['on', 'off']"},
+        parameters={"room_id": "string", "state": "enum ['on', 'off']"},
     ),
     ToolDefinition(
         name="set_door",
-        description="Lock/unlock cửa phòng học.",
-        parameters={"room_id": "string (uuid)", "state": "enum ['locked', 'unlocked']"},
+        description="Khóa hoặc mở khóa cửa phòng học.",
+        parameters={"room_id": "string", "state": "enum ['locked', 'unlocked']"},
     ),
     ToolDefinition(
         name="set_mode",
-        description="Chuyển room mode (thay đổi chế độ vận hành FSM).",
+        description="Thay đổi chế độ vận hành (FSM mode) của phòng.",
         parameters={
-            "room_id": "string (uuid)",
-            "mode": "string (enum ['SAVING', 'SELF_STUDY', 'LECTURE', 'EXAM', 'LOCK', 'SUSPECTED', 'EMERGENCY'])",
+            "room_id": "string",
+            "mode": "enum ['SAVING', 'SELF_STUDY', 'LECTURE', 'EXAM', 'LOCK', 'SUSPECTED', 'EMERGENCY']",
         },
     ),
     ToolDefinition(
         name="trigger_buzzer",
-        description="Kêu còi báo động (buzzer) trong phòng.",
-        parameters={
-            "room_id": "string (uuid)",
-            "pattern": "enum ['short', 'long', 'double', 'emergency']",
-        },
+        description="Kích hoạt còi báo động trong phòng học.",
+        parameters={"room_id": "string", "pattern": "enum ['short', 'long', 'continuous']"},
     ),
     ToolDefinition(
         name="send_alert",
-        description="Gửi notification cảnh báo lên DTwin / Dashboard.",
+        description="Gửi thông báo cảnh báo tới giảng viên hoặc quản trị viên hệ thống.",
         parameters={
-            "room_id": "string (uuid)",
+            "room_id": "string",
             "message": "string",
+            "level": "enum ['info', 'warning', 'critical']",
         },
     ),
     ToolDefinition(
         name="set_led",
-        description="Đổi hiệu ứng/màu sắc trên LED strip của phòng.",
-        parameters={
-            "room_id": "string (uuid)",
-            "color": "string",
-            "effect": "enum ['solid', 'blink']",
-        },
+        description="Điều khiển đèn LED hiển thị trạng thái phòng.",
+        parameters={"room_id": "string", "state": "enum ['solid', 'blink']"},
     ),
 ]
 
@@ -159,15 +153,15 @@ def render_tool_desc(tools: list[ToolDefinition]) -> str:
     return "\n".join(lines)
 
 
-# Ma trận quyền hạn tool theo chế độ phòng (room_mode) chuẩn theo thiết kế
+# Ma trận quyền hạn tool theo chế độ phòng (room_mode)
 MODE_PERMISSIONS: dict[str, set[str]] = {
-    "SAVING": {"set_fan", "set_door", "set_mode", "trigger_buzzer", "send_alert", "set_led"},
-    "SELF_STUDY": {"set_fan", "set_door", "set_mode", "trigger_buzzer", "send_alert", "set_led"},
-    "LECTURE": {"set_fan", "set_door", "set_mode", "trigger_buzzer", "send_alert", "set_led"},
-    "EXAM": {"set_fan", "set_mode", "trigger_buzzer", "send_alert", "set_led"},  # set_door is No*
-    "LOCK": {"send_alert"},  # Giữ nguyên khóa cửa & tắt thiết bị khác ngoại trừ send_alert
-    "SUSPECTED": {"set_fan", "set_door", "trigger_buzzer", "send_alert"},  # Không chuyển mode, không đổi LED
-    "EMERGENCY": {"set_door", "trigger_buzzer", "send_alert"},  # Mở cửa khẩn cấp, kêu buzzer, gửi alert
+    "SAVING": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
+    "SELF_STUDY": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
+    "LECTURE": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
+    "EXAM": {"set_fan", "send_alert", "set_led", "set_mode"},  # Không tự ý set_door / trigger_buzzer trong giờ thi
+    "LOCK": {"send_alert", "trigger_buzzer", "set_mode"},  # Giữ nguyên khóa cửa
+    "SUSPECTED": {"set_fan", "send_alert", "set_led", "trigger_buzzer", "set_mode"},
+    "EMERGENCY": {"set_fan", "set_door", "set_mode", "trigger_buzzer", "send_alert", "set_led"},
 }
 
 

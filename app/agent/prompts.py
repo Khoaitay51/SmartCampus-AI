@@ -107,19 +107,23 @@ def build_react_prompt(
     reflections: str,
     event_context: str,
     scratchpad: str,
+    past_experience: str = "",
 ) -> str:
-    return "\n".join(
-        [
-            SYSTEM_PROMPT,
-            build_analysis_prompt(event_type),
-            build_tool_selection_prompt(tool_desc, tool_names, max_rag_calls),
-            OUTPUT_FORMAT_INSTRUCTIONS,
-            f"## Ví dụ (Tiny Trajectory Store):\n{TTS_EXAMPLES}\n(HẾT VÍ DỤ)\n",
-            f"## Feedback từ các vòng review/reflect trước (nếu có, ưu tiên xử lý ngay):\n{reflections}\n",
-            f"## Sự kiện cần xử lý:\n{event_context}\n",
-            scratchpad,
-        ]
-    )
+    parts = [
+        SYSTEM_PROMPT,
+        build_analysis_prompt(event_type),
+        build_tool_selection_prompt(tool_desc, tool_names, max_rag_calls),
+        OUTPUT_FORMAT_INSTRUCTIONS,
+        f"## Ví dụ (Tiny Trajectory Store):\n{TTS_EXAMPLES}\n(HẾT VÍ DỤ)\n",
+    ]
+    if past_experience:
+        parts.append(past_experience + "\n")
+    parts += [
+        f"## Feedback từ các vòng review/reflect trước (nếu có, ưu tiên xử lý ngay):\n{reflections}\n",
+        f"## Sự kiện cần xử lý:\n{event_context}\n",
+        scratchpad,
+    ]
+    return "\n".join(parts)
  
  
 # ---------------------------------------------------------------------------

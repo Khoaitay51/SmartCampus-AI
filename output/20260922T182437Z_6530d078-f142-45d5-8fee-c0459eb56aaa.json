@@ -1,0 +1,135 @@
+{
+  "event": {
+    "event_id": "6530d078-f142-45d5-8fee-c0459eb56aaa",
+    "event_type": "occupancy_change",
+    "room_id": "826407b6-1e48-48b4-9a37-d940a3ccc426",
+    "timestamp": "2026-09-22T22:15:00+07:00",
+    "event_data": {
+      "current_count": 4,
+      "delta": 4,
+      "direction": "in",
+      "trigger": "occupancy_spike"
+    },
+    "operational_context": {
+      "room": {
+        "room_name": "Phong C305",
+        "room_type": "study_room",
+        "current_mode": "IDLE",
+        "smoke_state": "normal",
+        "room_id": "826407b6-1e48-48b4-9a37-d940a3ccc426"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T22:00:00+07:00",
+        "window_end": "2026-09-22T22:15:00+07:00",
+        "temperature": {
+          "min": 25.0,
+          "max": 26.0,
+          "avg": 25.5,
+          "latest": 25.8
+        },
+        "humidity": {
+          "min": 55.0,
+          "max": 62.0,
+          "avg": 58.0,
+          "latest": 60.0
+        },
+        "co2": {
+          "min": 400.0,
+          "max": 600.0,
+          "avg": 480.0,
+          "latest": 590.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 5.0,
+          "avg": 1.5,
+          "latest": 2.0
+        },
+        "air_quality": {
+          "min": 80.0,
+          "max": 95.0,
+          "avg": 88.0,
+          "latest": 85.0
+        }
+      },
+      "occupancy": {
+        "current_count": 4,
+        "total_in": 4,
+        "total_out": 0,
+        "trend": "increasing"
+      },
+      "active_session": null,
+      "recent_events": []
+    }
+  },
+  "response": {
+    "event_id": "6530d078-f142-45d5-8fee-c0459eb56aaa",
+    "recommendation": {
+      "tool_name": "set_mode",
+      "tool_params": {
+        "room_id": "826407b6-1e48-48b4-9a37-d940a3ccc426",
+        "mode": "SELF_STUDY"
+      },
+      "reason": "Phát hiện có 4 người vào phòng tự học C305 ngoài giờ học (22:15, active_session=null). Đề xuất chuyển mode phòng từ IDLE sang SELF_STUDY để hỗ trợ giám sát và vận hành thiết bị phù hợp.",
+      "confidence": 0.85,
+      "urgency": "medium"
+    },
+    "alternatives": [],
+    "analysis": "Sự kiện occupancy_change xuất hiện lúc 22:15:00 với 4 người vào phòng C305 (study_room). Phòng hiện không có phiên học chính khóa (active_session=null) và đang ở chế độ IDLE. Theo quy tắc xử lý biến động số lượng người ngoài giờ, việc ghi nhận người trong phòng tự học cần kích hoạt chuyển chế độ vận hành phòng sang SELF_STUDY.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": [
+      {
+        "tool": "get_schedule",
+        "params": {
+          "date": "2026-09-22",
+          "room_id": "826407b6-1e48-48b4-9a37-d940a3ccc426"
+        },
+        "result_summary": "Lỗi khi thực thi RAG tool 'get_schedule': Không kết nối được Gateway sau 3 lần thử: [Errno 11001] getaddrinfo failed"
+      }
+    ],
+    "structured_trace": [
+      {
+        "step": 1,
+        "decision": "call_tool",
+        "tool": "get_schedule",
+        "reason_code": "Phòng C305 có lịch học hay hoạt động nào được đăng ký vào thời gian 22:15:00 ngày 2026-09-22 hay không?",
+        "evidence_ids": [
+          "call_get_schedule_1"
+        ],
+        "observation_summary": "Lỗi khi thực thi RAG tool 'get_schedule': Không kết nối được Gateway sau 3 lần thử: [Errno 11001] getaddrinfo failed",
+        "action_input": {
+          "date": "2026-09-22",
+          "room_id": "826407b6-1e48-48b4-9a37-d940a3ccc426"
+        }
+      },
+      {
+        "step": 2,
+        "decision": "finish",
+        "tool": null,
+        "reason_code": "GOAL_ACCOMPLISHED",
+        "evidence_ids": [
+          "6530d078-f142-45d5-8fee-c0459eb56aaa"
+        ],
+        "observation_summary": "finished",
+        "action_input": {
+          "final_json": {
+            "skip": false,
+            "recommendation": {
+              "tool_name": "set_mode",
+              "tool_params": {
+                "room_id": "826407b6-1e48-48b4-9a37-d940a3ccc426",
+                "mode": "SELF_STUDY"
+              },
+              "reason": "Phát hiện có 4 người vào phòng tự học C305 ngoài giờ học (22:15, active_session=null). Đề xuất chuyển mode phòng từ IDLE sang SELF_STUDY để hỗ trợ giám sát và vận hành thiết bị phù hợp.",
+              "confidence": 0.85,
+              "urgency": "medium"
+            },
+            "analysis": "Sự kiện occupancy_change xuất hiện lúc 22:15:00 với 4 người vào phòng C305 (study_room). Phòng hiện không có phiên học chính khóa (active_session=null) và đang ở chế độ IDLE. Theo quy tắc xử lý biến động số lượng người ngoài giờ, việc ghi nhận người trong phòng tự học cần kích hoạt chuyển chế độ vận hành phòng sang SELF_STUDY."
+          }
+        }
+      }
+    ]
+  },
+  "recorded_at": "2026-09-22T18:24:37.375882+00:00"
+}

@@ -22,4 +22,4 @@ class EventPayload(BaseModel):
     room_id: UUID
     timestamp: datetime
     event_data: dict[str, Any] = Field(default_factory=dict)
-    operational_context: dict[str, Any]
+    operational_context: dict[str, Any] = Field(default_factory=dict)

@@ -1,0 +1,178 @@
+{
+  "event": {
+    "event_id": "7b1a7376-32e0-4396-8109-fa17a2c17dcb",
+    "event_type": "temperature_anomaly",
+    "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+    "timestamp": "2026-09-22T08:30:00+07:00",
+    "event_data": {
+      "temperature": 36.2,
+      "humidity": 71.0,
+      "co2": 1450,
+      "trigger": "threshold_exceeded",
+      "threshold": 34.0
+    },
+    "operational_context": {
+      "room": {
+        "room_name": "Phòng A101",
+        "room_type": "lecture_hall",
+        "current_mode": "LECTURE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T08:00:00+07:00",
+        "window_end": "2026-09-22T08:30:00+07:00",
+        "temperature": {
+          "min": 28.5,
+          "max": 36.2,
+          "avg": 33.1,
+          "latest": 36.2
+        },
+        "humidity": {
+          "min": 60.0,
+          "max": 75.0,
+          "avg": 68.0,
+          "latest": 71.0
+        },
+        "co2": {
+          "min": 800.0,
+          "max": 1450.0,
+          "avg": 1100.0,
+          "latest": 1450.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 2.0,
+          "avg": 0.5,
+          "latest": 0.0
+        },
+        "air_quality": {
+          "min": 55.0,
+          "max": 80.0,
+          "avg": 65.0,
+          "latest": 58.0
+        }
+      },
+      "occupancy": {
+        "current_count": 38,
+        "total_in": 40,
+        "total_out": 2,
+        "trend": "stable"
+      },
+      "active_session": {
+        "session_id": "84fcfa56-3db1-4ccd-b64b-725eb5f8d5a2",
+        "class_code": "CS101",
+        "lecturer_name": "TS. Nguyen Van A",
+        "enrolled_count": 40,
+        "checked_in_count": 38,
+        "started_at": "2026-09-22T07:30:00+07:00",
+        "attendance_deadline": "2026-09-22T07:45:00+07:00",
+        "is_exam": false
+      },
+      "recent_events": [
+        {
+          "type": "temperature_anomaly",
+          "time": "2026-09-22T08:10:00+07:00",
+          "extra": {
+            "temperature": 34.5
+          }
+        }
+      ]
+    }
+  },
+  "response": {
+    "event_id": "7b1a7376-32e0-4396-8109-fa17a2c17dcb",
+    "recommendation": {
+      "tool_name": "set_fan",
+      "tool_params": {
+        "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+        "state": "on"
+      },
+      "reason": "Nhiệt độ phòng A101 đạt 36.2°C (vượt ngưỡng 34.0°C) và nồng độ CO2 ở mức cao (1450 ppm) với 38 người đang tham gia buổi học. Cần bật quạt để hạ nhiệt và cải thiện lưu thông không khí.",
+      "confidence": 0.9,
+      "urgency": "high"
+    },
+    "alternatives": [],
+    "analysis": "Nhiệt độ có xu hướng tăng liên tục từ 28.5°C lên 36.2°C trong 30 phút qua, vượt ngưỡng cảnh báo 34.0°C. Lớp học đang diễn ra (chế độ LECTURE) với 38 người. Chế độ LECTURE cho phép bật quạt để đảm bảo môi trường học tập.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": [
+      {
+        "tool": "get_telemetry",
+        "params": {
+          "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+          "metric": "temperature",
+          "window": "1h"
+        },
+        "result_summary": "{\"data\": [], \"stats\": {\"min\": 0.0, \"max\": 0.0, \"avg\": 0.0, \"latest\": 0.0}}"
+      },
+      {
+        "tool": "get_predictions",
+        "params": {
+          "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+          "metric": "temperature",
+          "horizon": "15m"
+        },
+        "result_summary": "{\"current\": 0.0, \"predicted\": 0.0, \"trend\": \"stable\", \"confidence\": 0.5}"
+      }
+    ],
+    "structured_trace": [
+      {
+        "step": 1,
+        "decision": "call_tool",
+        "tool": "get_telemetry",
+        "reason_code": "Xu hướng nhiệt độ trong 1 giờ qua tại phòng A101 như thế nào?",
+        "evidence_ids": [
+          "call_get_telemetry_1"
+        ],
+        "observation_summary": "{\"data\": [], \"stats\": {\"min\": 0.0, \"max\": 0.0, \"avg\": 0.0, \"latest\": 0.0}}",
+        "action_input": {
+          "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+          "metric": "temperature",
+          "window": "1h"
+        }
+      },
+      {
+        "step": 2,
+        "decision": "call_tool",
+        "tool": "get_predictions",
+        "reason_code": "Dự báo nhiệt độ trong 15 phút tới tại phòng A101 có tiếp tục tăng hay giảm?",
+        "evidence_ids": [
+          "call_get_predictions_2"
+        ],
+        "observation_summary": "{\"current\": 0.0, \"predicted\": 0.0, \"trend\": \"stable\", \"confidence\": 0.5}",
+        "action_input": {
+          "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+          "metric": "temperature",
+          "horizon": "15m"
+        }
+      },
+      {
+        "step": 3,
+        "decision": "finish",
+        "tool": null,
+        "reason_code": "GOAL_ACCOMPLISHED",
+        "evidence_ids": [
+          "7b1a7376-32e0-4396-8109-fa17a2c17dcb"
+        ],
+        "observation_summary": "finished",
+        "action_input": {
+          "final_json": {
+            "skip": false,
+            "recommendation": {
+              "tool_name": "set_fan",
+              "tool_params": {
+                "room_id": "e2179c9c-577a-40c0-921c-1658813c1cef",
+                "state": "on"
+              },
+              "reason": "Nhiệt độ phòng A101 đạt 36.2°C (vượt ngưỡng 34.0°C) và nồng độ CO2 ở mức cao (1450 ppm) với 38 người đang tham gia buổi học. Cần bật quạt để hạ nhiệt và cải thiện lưu thông không khí.",
+              "confidence": 0.9,
+              "urgency": "high"
+            },
+            "analysis": "Nhiệt độ có xu hướng tăng liên tục từ 28.5°C lên 36.2°C trong 30 phút qua, vượt ngưỡng cảnh báo 34.0°C. Lớp học đang diễn ra (chế độ LECTURE) với 38 người. Chế độ LECTURE cho phép bật quạt để đảm bảo môi trường học tập."
+          }
+        }
+      }
+    ]
+  },
+  "recorded_at": "2026-09-23T07:16:17.085488+00:00"
+}

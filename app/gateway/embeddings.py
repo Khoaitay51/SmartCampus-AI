@@ -7,7 +7,14 @@ from google import genai
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.document import Embedding
+try:
+    from models.document import Embedding
+except ImportError:
+    Embedding = None
+
+from app.config.settings import settings
+import logging
+import asyncio
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
@@ -16,6 +23,52 @@ EMBEDDING_DIM = 768
 EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
 
 gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+logger = logging.getLogger(__name__)
+
+
+async def get_embedding(text: str) -> list[float]:
+    """
+    Generate embedding vector for input text matching settings.EMBEDDING_DIM.
+    Prioritizes Voyage AI if VOYAGE_API_KEY is set, else Ollama / Gemini or fallback vector.
+    """
+    target_dim = settings.EMBEDDING_DIM
+    if settings.VOYAGE_API_KEY:
+        try:
+            req = Request(
+                "https://api.voyageai.com/v1/embeddings",
+                data=json.dumps({
+                    "model": settings.EMBEDDING_MODEL,
+                    "input": [text],
+                }).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.VOYAGE_API_KEY}",
+                },
+                method="POST",
+            )
+            loop = asyncio.get_running_loop()
+            res = await loop.run_in_executor(None, lambda: urlopen(req, timeout=10).read().decode("utf-8"))
+            data = json.loads(res)
+            vec = data["data"][0]["embedding"]
+            if len(vec) == target_dim:
+                return vec
+            logger.warning("Voyage AI embedding dimension mismatch: expected %d, got %d", target_dim, len(vec))
+        except Exception as e:
+            logger.warning("Voyage AI embedding request failed: %s", e)
+
+    # Fallback to Ollama if configured
+    try:
+        loop = asyncio.get_running_loop()
+        res = await loop.run_in_executor(None, lambda: post_ollama("/api/embed", {"model": EMBEDDING_MODEL, "input": [text]}))
+        vecs = res.get("embeddings", [])
+        if vecs and len(vecs[0]) == target_dim:
+            return vecs[0]
+    except Exception:
+        pass
+
+    # Default fallback: return zero vector of correct dimension
+    return [0.0] * target_dim
+
 
 
 def chunk_text(text: str, chunk_size: int = 3500, overlap: int = 500) -> list[str]:

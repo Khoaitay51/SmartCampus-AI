@@ -27,7 +27,11 @@ class GatewayError(Exception):
 
 class GatewayClient:
     def __init__(self, base_url: str | None = None, timeout: float | None = None, max_retries: int | None = None) -> None:
-        self.base_url = (base_url or _cfg("GATEWAY_BASE_URL", "http://gateway:8000/api")).rstrip("/")
+        self.base_url = (
+            base_url
+            or _cfg("GATEWAY_BASE_URL", None)
+            or _cfg("BACKEND_BASE_URL", "http://localhost:8000/api")
+        ).rstrip("/")
         self.timeout = timeout or _cfg("GATEWAY_TIMEOUT_SECONDS", 10.0)
         self.max_retries = max_retries if max_retries is not None else _cfg("GATEWAY_MAX_RETRIES", 2)
         self._client: httpx.AsyncClient | None = None
