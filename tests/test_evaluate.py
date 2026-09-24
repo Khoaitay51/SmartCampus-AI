@@ -221,6 +221,72 @@ class TestEvaluateAndAgent(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first_step.decision, "finish")
         self.assertEqual(first_step.reason_code, "GOAL_ACCOMPLISHED")
 
+    async def test_evaluate_event_multistep_rag_execution(self):
+        """Kiểm tra ReAct đa bước: Agent gọi 2 RAG tools (get_telemetry, get_predictions) trước khi finish."""
+        payload = make_sample_payload(room_mode="LECTURE")
+        event_id = payload["event_id"]
+        room_id = payload["room_id"]
+
+        # Chuỗi phản hồi ReAct qua nhiều bước:
+        # Bước 1: Agent hỏi và gọi get_telemetry
+        step1_rag_call = (
+            f'Self-Ask: Nhiệt độ 30.8 độ có đang trong xu hướng tăng không?\n'
+            f'Thought: Cần gọi get_telemetry để xem dữ liệu 1 giờ qua.\n'
+            f'Action: get_telemetry\n'
+            f'Action Input: {{"room_id": "{room_id}", "metric": "temperature", "window": "1h"}}'
+        )
+
+        # Bước 2: Agent thấy xu hướng tăng, gọi tiếp get_predictions
+        step2_rag_call = (
+            f'Self-Ask: Nhiệt độ có vượt 34 độ trong 15 phút tới không?\n'
+            f'Thought: Dữ liệu telemetry cho thấy nhiệt độ đang tăng, cần dự báo EWMA.\n'
+            f'Action: get_predictions\n'
+            f'Action Input: {{"room_id": "{room_id}", "metric": "temperature", "horizon": "15m"}}'
+        )
+
+        # Bước 3: Đã đủ bằng chứng, kết luận bật quạt
+        step3_finish = (
+            f'Self-Ask: Đã đủ chứng cứ để quyết định chưa?\n'
+            f'Thought: Cả telemetry và dự báo đều cho thấy nguy cơ quá nhiệt, bật quạt làm mát.\n'
+            f'Action: finish\n'
+            f'Action Input: {{"final_json": {{"event_id": "{event_id}", "recommendation": {{"tool_name": "set_fan", "tool_params": {{"room_id": "{room_id}", "state": "on"}}, "reason": "Telemetry và dự báo EWMA đều chỉ ra nhiệt độ vượt 34 độ C", "confidence": 0.92, "urgency": "high"}}, "analysis": "Nhiệt độ phòng tăng liên tục và dự báo tiếp tục tăng, cần bật quạt làm mát ngay.", "skip": false}}}}'
+        )
+
+        # Bước 4: Review Agent duyệt
+        review_output = json.dumps({
+            "status": "Accomplished",
+            "reasoning": "Agent đã thu thập đủ bằng chứng qua get_telemetry và get_predictions trước khi đề xuất set_fan.",
+            "suggestions": None,
+        })
+
+        mock_llm = MockLLM(responses=[step1_rag_call, step2_rag_call, step3_finish, review_output])
+        custom_agent = get_agent(llm=mock_llm)
+
+        with patch.object(evaluate_module, "get_agent", return_value=custom_agent):
+            response = await evaluate_event(payload)
+
+        # Kiểm chứng AgentResponse
+        self.assertIsInstance(response, AgentResponse)
+        self.assertFalse(response.skip)
+        self.assertIsNotNone(response.recommendation)
+        self.assertEqual(response.recommendation.tool_name, "set_fan")
+        self.assertEqual(response.recommendation.confidence, 0.92)
+
+        # Kiểm chứng RAG tools đã THỰC SỰ ĐƯỢC GỌI VÀ GHI LOG (2 RAG calls)
+        self.assertEqual(len(response.tool_calls_log), 2)
+        self.assertEqual(response.tool_calls_log[0].tool, "get_telemetry")
+        self.assertEqual(response.tool_calls_log[1].tool, "get_predictions")
+        self.assertIn("room_id", response.tool_calls_log[0].params)
+        self.assertIn("room_id", response.tool_calls_log[1].params)
+
+        # Kiểm chứng Structured Trace ghi nhận đủ 3 bước (2 call_tool + 1 finish)
+        self.assertGreaterEqual(len(response.structured_trace), 3)
+        self.assertEqual(response.structured_trace[0].decision, "call_tool")
+        self.assertEqual(response.structured_trace[0].tool, "get_telemetry")
+        self.assertEqual(response.structured_trace[1].decision, "call_tool")
+        self.assertEqual(response.structured_trace[1].tool, "get_predictions")
+        self.assertEqual(response.structured_trace[2].decision, "finish")
+
 
 if __name__ == "__main__":
     unittest.main()

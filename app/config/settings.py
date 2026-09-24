@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     BACKEND_BASE_URL: str = Field(default="http://localhost:8000/api", description="Base URL của SmartCampus backend chính")
     GATEWAY_BASE_URL: str = Field(default="http://localhost:8000/api", description="Base URL kết nối Edge Gateway API")
     BACKEND_SERVICE_TOKEN: str = Field(default="", description="Service token agent dùng để gọi backend")
+    USE_MOCK_RAG: bool = Field(default=False, description="Tự động dùng Mock Data cho RAG tools khi backend offline")
 
     # logging/audit.py
     AUDIT_OUTPUT_DIR: str = Field(default="./output", description="Thư mục ghi file JSON audit mỗi lần evaluate")
@@ -51,4 +52,4 @@ class Settings(BaseSettings):
         return v.rstrip("/")
 
 
-settings = Settings()
+settings = Settings()

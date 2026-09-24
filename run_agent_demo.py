@@ -426,12 +426,17 @@ async def main() -> None:
     parser.add_argument("--list-rooms", action="store_true", help="Liệt kê rooms có sẵn trên backend")
     parser.add_argument("--no-memory", action="store_true", help="Không lưu vào pgvector LTM")
     parser.add_argument("--scenario", type=int, help="Chỉ chạy kịch bản số N (0-indexed)")
+    parser.add_argument("--mock", action="store_true", help="Bật chế độ Mock RAG data ngay lập tức (không cần chờ backend timeout)")
     args = parser.parse_args()
+
+    if args.mock:
+        settings.USE_MOCK_RAG = True
 
     print("=" * 70)
     print(" SmartCampus AI Agent — Training Demo")
     print(f"       Backend : {settings.BACKEND_BASE_URL}")
     print(f"       LLM     : {settings.AGENT}")
+    print(f"       RAG Mode: {'MOCK DATA (Fast test)' if settings.USE_MOCK_RAG else 'Live Gateway (Auto-fallback to Mock)'}")
     print("=" * 70)
 
     llm = LLMClient()
