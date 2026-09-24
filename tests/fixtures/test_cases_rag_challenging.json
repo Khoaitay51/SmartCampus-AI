@@ -1,0 +1,1385 @@
+{
+  "scenarios": [
+    {
+      "id": "scenario_temp_trend_check",
+      "name": "Nhiệt độ mấp mé ngưỡng (30.8°C), thiếu xu hướng thời gian thực",
+      "description": "Trong operational_context chỉ có giá trị tức thời, không rõ nhiệt độ đang tăng hay giảm. Bắt buộc Agent phải gọi get_telemetry (xem 1h qua) và get_predictions (xem 15m tới) trước khi dám ra quyết định bật quạt.",
+      "payload": {
+        "event_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "event_type": "temperature_anomaly",
+        "room_id": "bbbbbbbb-1111-4444-8888-000000000102",
+        "timestamp": "2026-09-24T14:30:00Z",
+        "event_data": {
+          "measured_temp": 30.8,
+          "sensor_id": "dht22-b102",
+          "note": "Nhiệt độ đo được 30.8°C vừa chạm ngưỡng cảnh báo sơ bộ"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "bbbbbbbb-1111-4444-8888-000000000102",
+            "room_name": "Phòng Thực Hành B102",
+            "room_type": "laboratory",
+            "current_mode": "LECTURE",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_telemetry",
+          "get_predictions"
+        ],
+        "recommended_action": "set_fan",
+        "recommended_state": "on",
+        "reasoning_goal": "Xác nhận nhiệt độ đang trong xu hướng tăng liên tục và dự báo vượt 33°C để kích hoạt quạt làm mát."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "bbbbbbbb-1111-4444-8888-000000000102",
+          "data": {
+            "window_start": "2026-09-24T14:15:00Z",
+            "window_end": "2026-09-24T14:30:00Z",
+            "temperature": {
+              "min": 29.5,
+              "max": 30.8,
+              "avg": 30.1,
+              "latest": 30.8
+            },
+            "humidity": {
+              "min": 60.0,
+              "max": 68.0,
+              "avg": 64.0,
+              "latest": 65.0
+            },
+            "co2": {
+              "min": 500.0,
+              "max": 750.0,
+              "avg": 620.0,
+              "latest": 710.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.02,
+              "avg": 0.01,
+              "latest": 0.01
+            },
+            "air_quality": {
+              "min": 75.0,
+              "max": 90.0,
+              "avg": 82.0,
+              "latest": 80.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "bbbbbbbb-1111-4444-8888-000000000102",
+          "active_session": {
+            "session_id": "a5d89842-bc08-410a-8bf8-0115c544c680",
+            "lecturer_name": "ThS. Le Van B",
+            "class_code": "IT201",
+            "started_at": "2026-09-24T13:00:00Z",
+            "attendance_deadline": "2026-09-24T13:15:00Z",
+            "is_exam": false,
+            "checked_in_count": 35,
+            "enrolled_count": 40
+          }
+        },
+        "get_occupancy": {
+          "room_id": "bbbbbbbb-1111-4444-8888-000000000102",
+          "data": {
+            "current_count": 35,
+            "total_in": 38,
+            "total_out": 3,
+            "trend": "unknown"
+          }
+        },
+        "get_room_history": {
+          "room_id": "bbbbbbbb-1111-4444-8888-000000000102",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_rfid_unknown_night",
+      "name": "Quẹt thẻ lạ ngoài giờ học khi phòng đang ở chế độ SAVING",
+      "description": "Thẻ lạ quẹt vào phòng học vắng lúc 19:45. Context không có active_session. Bắt buộc Agent phải gọi get_schedule kiểm tra lịch học đột xuất và get_room_history kiểm tra trạng thái khóa trước khi báo động an ninh.",
+      "payload": {
+        "event_id": "3b29c54e-37c2-482d-8b5e-182390f77259",
+        "event_type": "rfid_unknown",
+        "room_id": "cccccccc-2222-4444-8888-000000000204",
+        "timestamp": "2026-09-24T19:45:00Z",
+        "event_data": {
+          "card_uid": "E2:80:68:55:1A",
+          "reader_id": "rfid-door-a204",
+          "access_result": "denied"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "cccccccc-2222-4444-8888-000000000204",
+            "room_name": "Phòng Lý Thuyết A204",
+            "room_type": "classroom",
+            "current_mode": "SAVING",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_schedule",
+          "get_room_history"
+        ],
+        "recommended_action": "send_alert",
+        "reasoning_goal": "Xác nhận tối nay không có lớp học, phòng đã đóng cửa từ 17:30, quẹt thẻ lạ ngoài giờ là dấu hiệu đáng ngờ cần gửi cảnh báo an ninh."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "cccccccc-2222-4444-8888-000000000204",
+          "data": {
+            "window_start": "2026-09-24T19:30:00Z",
+            "window_end": "2026-09-24T19:45:00Z",
+            "temperature": {
+              "min": 25.0,
+              "max": 25.5,
+              "avg": 25.2,
+              "latest": 25.0
+            },
+            "humidity": {
+              "min": 55.0,
+              "max": 60.0,
+              "avg": 58.0,
+              "latest": 56.0
+            },
+            "co2": {
+              "min": 380.0,
+              "max": 420.0,
+              "avg": 400.0,
+              "latest": 395.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.01,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 85.0,
+              "max": 95.0,
+              "avg": 90.0,
+              "latest": 92.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "cccccccc-2222-4444-8888-000000000204",
+          "active_session": null
+        },
+        "get_occupancy": {
+          "room_id": "cccccccc-2222-4444-8888-000000000204",
+          "data": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "cccccccc-2222-4444-8888-000000000204",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_smoke_first_spike",
+      "name": "Chỉ số khói tăng chớm ngưỡng (415), nhiệt độ phòng bình thường",
+      "description": "Cảm biến MQ2 đo được 415 (ngưỡng 400), nhưng nhiệt độ phòng chỉ 26°C. Bắt buộc Agent phải tra cứu get_room_history để xác định đây là lần đầu (suspected) hay lặp lại (emergency), và get_telemetry để kiểm tra tốc độ tăng của khói.",
+      "payload": {
+        "event_id": "8d3e2154-8b63-4556-9a29-7c858bb64091",
+        "event_type": "smoke_detected",
+        "room_id": "dddddddd-3333-4444-8888-000000000003",
+        "timestamp": "2026-09-24T10:15:00Z",
+        "event_data": {
+          "smoke_value": 415.0,
+          "smoke_threshold": 400.0,
+          "smoke_state": "suspected"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "dddddddd-3333-4444-8888-000000000003",
+            "room_name": "Phòng Thí Nghiệm Lab3",
+            "room_type": "laboratory",
+            "current_mode": "SUSPECTED",
+            "smoke_state": "suspected"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_room_history",
+          "get_telemetry"
+        ],
+        "recommended_action": "trigger_buzzer",
+        "recommended_pattern": "short",
+        "reasoning_goal": "Xác nhận khói tăng lần đầu chưa có tiền sử, nhiệt độ chưa tăng, kích hoạt còi cảnh báo ngắn mức suspected, không chuyển sang emergency toàn phần."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "dddddddd-3333-4444-8888-000000000003",
+          "data": {
+            "window_start": "2026-09-24T10:00:00Z",
+            "window_end": "2026-09-24T10:15:00Z",
+            "temperature": {
+              "min": 25.5,
+              "max": 26.5,
+              "avg": 26.0,
+              "latest": 26.2
+            },
+            "humidity": {
+              "min": 50.0,
+              "max": 55.0,
+              "avg": 52.0,
+              "latest": 53.0
+            },
+            "co2": {
+              "min": 450.0,
+              "max": 550.0,
+              "avg": 490.0,
+              "latest": 510.0
+            },
+            "smoke_value": {
+              "min": 50.0,
+              "max": 415.0,
+              "avg": 120.0,
+              "latest": 415.0
+            },
+            "air_quality": {
+              "min": 60.0,
+              "max": 80.0,
+              "avg": 70.0,
+              "latest": 65.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "dddddddd-3333-4444-8888-000000000003",
+          "active_session": {
+            "session_id": "f1284a92-4112-4f32-8409-e8568c0012bc",
+            "lecturer_name": "TS. Tran Thi C",
+            "class_code": "PHYS102",
+            "started_at": "2026-09-24T09:30:00Z",
+            "attendance_deadline": "2026-09-24T09:45:00Z",
+            "is_exam": false,
+            "checked_in_count": 20,
+            "enrolled_count": 22
+          }
+        },
+        "get_occupancy": {
+          "room_id": "dddddddd-3333-4444-8888-000000000003",
+          "data": {
+            "current_count": 20,
+            "total_in": 20,
+            "total_out": 0,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "dddddddd-3333-4444-8888-000000000003",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_temp_drop_rapid",
+      "name": "Nhiệt độ giảm sâu đột ngột (18°C) trong giờ học",
+      "description": "Nhiệt độ phòng báo 18°C. Agent cần dùng get_telemetry để xác nhận đây là xu hướng giảm thật hay do lỗi cảm biến, và get_schedule để xem lớp có sắp nghỉ không. Nếu lớp còn học lâu và nhiệt độ thực sự giảm, cần tắt quạt để tránh sinh viên bị lạnh.",
+      "payload": {
+        "event_id": "4a1b2c3d-1234-5678-9abc-def012345678",
+        "event_type": "temperature_anomaly",
+        "room_id": "eeeeeeee-5555-4444-8888-000000000105",
+        "timestamp": "2026-09-24T08:30:00Z",
+        "event_data": {
+          "measured_temp": 18.2,
+          "sensor_id": "dht22-e105",
+          "note": "Nhiệt độ giảm xuống dưới mức tiện nghi (18.2°C)"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "eeeeeeee-5555-4444-8888-000000000105",
+            "room_name": "Phòng Học E105",
+            "room_type": "classroom",
+            "current_mode": "LECTURE",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_telemetry",
+          "get_schedule"
+        ],
+        "recommended_action": "set_fan",
+        "recommended_state": "off",
+        "reasoning_goal": "Xác nhận nhiệt độ thực sự đang giảm sâu và lớp học còn diễn ra, do đó cần tắt hệ thống làm mát/quạt để đảm bảo sức khỏe sinh viên."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "eeeeeeee-5555-4444-8888-000000000105",
+          "data": {
+            "window_start": "2026-09-24T08:15:00Z",
+            "window_end": "2026-09-24T08:30:00Z",
+            "temperature": {
+              "min": 18.2,
+              "max": 24.0,
+              "avg": 20.5,
+              "latest": 18.2
+            },
+            "humidity": {
+              "min": 45.0,
+              "max": 50.0,
+              "avg": 48.0,
+              "latest": 46.0
+            },
+            "co2": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "eeeeeeee-5555-4444-8888-000000000105",
+          "active_session": {
+            "session_id": "94895c8d-eb17-46bb-8c21-489efe028579",
+            "lecturer_name": "PGS. Nguyen Van D",
+            "class_code": "MATH201",
+            "started_at": "2026-09-24T08:00:00Z",
+            "attendance_deadline": "2026-09-24T08:15:00Z",
+            "is_exam": false,
+            "checked_in_count": 40,
+            "enrolled_count": 42
+          }
+        },
+        "get_occupancy": {
+          "room_id": "eeeeeeee-5555-4444-8888-000000000105",
+          "data": {
+            "current_count": 40,
+            "total_in": 40,
+            "total_out": 0,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "eeeeeeee-5555-4444-8888-000000000105",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_rfid_spam_exam",
+      "name": "Nhiều lần quẹt thẻ sai liên tục trong giờ thi",
+      "description": "Trong giờ thi, liên tục có thẻ lạ quẹt cửa. Context chỉ có thông tin của 1 lần quẹt. Agent cần gọi get_room_history để xem tần suất thẻ lạ bị từ chối, và get_schedule để xác nhận đang là giờ thi quan trọng. Bắt buộc cảnh báo bảo vệ.",
+      "payload": {
+        "event_id": "5b2c3d4e-1234-5678-9abc-def012345679",
+        "event_type": "rfid_unknown",
+        "room_id": "ffffffff-6666-4444-8888-000000000201",
+        "timestamp": "2026-09-24T14:05:00Z",
+        "event_data": {
+          "card_uid": "A1:B2:C3:D4:E5",
+          "reader_id": "door-f201",
+          "access_result": "denied"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "ffffffff-6666-4444-8888-000000000201",
+            "room_name": "Phòng Thi F201",
+            "room_type": "exam_room",
+            "current_mode": "EXAM",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_room_history",
+          "get_schedule"
+        ],
+        "recommended_action": "send_alert",
+        "reasoning_goal": "Kiểm tra lịch sử phát hiện nhiều lần cố gắng xâm nhập trái phép trong khung giờ thi nghiêm ngặt, cần lập tức gửi cảnh báo an ninh."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "ffffffff-6666-4444-8888-000000000201",
+          "data": {
+            "window_start": "2026-09-24T13:50:00Z",
+            "window_end": "2026-09-24T14:05:00Z",
+            "temperature": {
+              "min": 24.0,
+              "max": 25.0,
+              "avg": 24.5,
+              "latest": 24.5
+            },
+            "humidity": {
+              "min": 50.0,
+              "max": 55.0,
+              "avg": 52.0,
+              "latest": 52.0
+            },
+            "co2": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "ffffffff-6666-4444-8888-000000000201",
+          "active_session": {
+            "session_id": "f09593d3-cfe1-41de-aecb-1039b2ef7725",
+            "lecturer_name": "Hội đồng coi thi",
+            "class_code": "CS_FINAL",
+            "started_at": "2026-09-24T14:00:00Z",
+            "attendance_deadline": "2026-09-24T14:15:00Z",
+            "is_exam": true,
+            "checked_in_count": 30,
+            "enrolled_count": 30
+          }
+        },
+        "get_occupancy": {
+          "room_id": "ffffffff-6666-4444-8888-000000000201",
+          "data": {
+            "current_count": 30,
+            "total_in": 30,
+            "total_out": 0,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "ffffffff-6666-4444-8888-000000000201",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_occupancy_spike_saving",
+      "name": "Đột biến số người vào phòng lúc ban đêm (SAVING mode)",
+      "description": "Camera đếm số người tăng đột biến (+15 người) vào lúc 22:30 đêm. Agent phải dùng get_telemetry để xem CO2 có tăng tương ứng không (loại trừ lỗi AI đếm sai) và gọi get_schedule kiểm tra sự kiện đêm. Nếu thực sự có đột nhập tập thể, gọi cảnh báo khẩn.",
+      "payload": {
+        "event_id": "6c3d4e5f-1234-5678-9abc-def01234567a",
+        "event_type": "occupancy_change",
+        "room_id": "aaaaaaaa-7777-4444-8888-000000000301",
+        "timestamp": "2026-09-24T22:30:00Z",
+        "event_data": {
+          "current_count": 15,
+          "delta": 15,
+          "direction": "in"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "aaaaaaaa-7777-4444-8888-000000000301",
+            "room_name": "Phòng Hội Thảo 301",
+            "room_type": "meeting_room",
+            "current_mode": "SAVING",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_telemetry",
+          "get_schedule"
+        ],
+        "recommended_action": "send_alert",
+        "reasoning_goal": "Xác nhận CO2 và nhiệt độ tăng tương ứng với 15 người, không có lịch trình đêm, suy ra đây là xâm nhập tập thể trái phép, phát cảnh báo khẩn."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "aaaaaaaa-7777-4444-8888-000000000301",
+          "data": {
+            "window_start": "2026-09-24T22:15:00Z",
+            "window_end": "2026-09-24T22:30:00Z",
+            "temperature": {
+              "min": 25.0,
+              "max": 27.5,
+              "avg": 26.0,
+              "latest": 27.5
+            },
+            "co2": {
+              "min": 400.0,
+              "max": 800.0,
+              "avg": 550.0,
+              "latest": 800.0
+            },
+            "humidity": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "aaaaaaaa-7777-4444-8888-000000000301",
+          "active_session": null
+        },
+        "get_occupancy": {
+          "room_id": "aaaaaaaa-7777-4444-8888-000000000301",
+          "data": {
+            "current_count": 15,
+            "total_in": 15,
+            "total_out": 0,
+            "trend": "increasing"
+          }
+        },
+        "get_room_history": {
+          "room_id": "aaaaaaaa-7777-4444-8888-000000000301",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_manual_lock_during_class",
+      "name": "Có lệnh khóa cửa thủ công bất thường giữa giờ học",
+      "description": "Một lệnh khóa cửa (lock) được gửi thủ công từ bảng điều khiển phòng khi lớp đang học (LECTURE). Agent cần gọi get_schedule xác nhận lớp vẫn đang diễn ra, và gọi get_room_history xem ai đã gửi lệnh. Cần từ chối khóa và cảnh báo bảo vệ vì nhốt sinh viên là vi phạm an toàn.",
+      "payload": {
+        "event_id": "7d4e5f6a-1234-5678-9abc-def01234567b",
+        "event_type": "manual_trigger",
+        "room_id": "bbbbbbbb-8888-4444-8888-000000000102",
+        "timestamp": "2026-09-24T09:15:00Z",
+        "event_data": {
+          "triggered_by": "unknown_panel",
+          "intent": "lock_door_now",
+          "requested_tool": "set_door",
+          "notes": "Lệnh khóa cửa khẩn cấp từ bảng điều khiển trong phòng"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "bbbbbbbb-8888-4444-8888-000000000102",
+            "room_name": "Phòng Thực Hành B102",
+            "room_type": "laboratory",
+            "current_mode": "LECTURE",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_schedule",
+          "get_room_history"
+        ],
+        "recommended_action": "send_alert",
+        "reasoning_goal": "Từ chối khóa cửa nhốt 35 người trong lớp do vi phạm nguyên tắc an toàn, gọi cảnh báo vì có kẻ nghịch phá bảng điều khiển."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "bbbbbbbb-8888-4444-8888-000000000102",
+          "data": {
+            "window_start": "2026-09-24T09:00:00Z",
+            "window_end": "2026-09-24T09:15:00Z",
+            "temperature": {
+              "min": 25.0,
+              "max": 25.5,
+              "avg": 25.2,
+              "latest": 25.2
+            },
+            "humidity": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "co2": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "bbbbbbbb-8888-4444-8888-000000000102",
+          "active_session": {
+            "session_id": "c0f0b565-df55-404d-a543-41c15a8b20c5",
+            "lecturer_name": "ThS. Le Van B",
+            "class_code": "IT201",
+            "started_at": "2026-09-24T08:00:00Z",
+            "attendance_deadline": "2026-09-24T08:15:00Z",
+            "is_exam": false,
+            "checked_in_count": 35,
+            "enrolled_count": 40
+          }
+        },
+        "get_occupancy": {
+          "room_id": "bbbbbbbb-8888-4444-8888-000000000102",
+          "data": {
+            "current_count": 35,
+            "total_in": 35,
+            "total_out": 0,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "bbbbbbbb-8888-4444-8888-000000000102",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_temp_high_maintenance",
+      "name": "Nhiệt độ cao trong chế độ MAINTENANCE trước giờ học",
+      "description": "Nhiệt độ phòng lên tới 32°C. Phòng đang ở MAINTENANCE và không có người. Đáng lẽ không cần làm mát, nhưng Agent phải gọi get_schedule và get_predictions để phát hiện 15 phút nữa sẽ có lớp học đông người. Quyết định bật quạt để pre-cool (làm mát trước).",
+      "payload": {
+        "event_id": "8e5f6a7a-1234-5678-9abc-def01234567c",
+        "event_type": "temperature_anomaly",
+        "room_id": "cccccccc-9999-4444-8888-000000000205",
+        "timestamp": "2026-09-24T06:45:00Z",
+        "event_data": {
+          "measured_temp": 32.5,
+          "sensor_id": "dht22-c205",
+          "note": "Nhiệt độ phòng vượt 32 độ vào sáng sớm"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "cccccccc-9999-4444-8888-000000000205",
+            "room_name": "Phòng Lý Thuyết C205",
+            "room_type": "classroom",
+            "current_mode": "MAINTENANCE",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_schedule",
+          "get_predictions"
+        ],
+        "recommended_action": "set_fan",
+        "recommended_state": "on",
+        "reasoning_goal": "Kiểm tra lịch học sắp tới, phát hiện 7:00 có lớp đông người và dự báo nhiệt độ không tự giảm, cần bật quạt làm mát phòng từ sớm (pre-cool)."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "cccccccc-9999-4444-8888-000000000205",
+          "data": {
+            "window_start": "2026-09-24T06:30:00Z",
+            "window_end": "2026-09-24T06:45:00Z",
+            "temperature": {
+              "min": 31.0,
+              "max": 32.5,
+              "avg": 31.8,
+              "latest": 32.5
+            },
+            "humidity": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "co2": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "cccccccc-9999-4444-8888-000000000205",
+          "active_session": null
+        },
+        "get_occupancy": {
+          "room_id": "cccccccc-9999-4444-8888-000000000205",
+          "data": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "cccccccc-9999-4444-8888-000000000205",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_occupancy_drops_lecture",
+      "name": "Giảm đột ngột toàn bộ sinh viên giữa giờ học",
+      "description": "Lớp học đang diễn ra (LECTURE) nhưng camera báo số người giảm đột ngột từ 40 xuống 0. Camera có bị hỏng? Agent cần gọi get_telemetry (xem CO2 có giảm thật không) và get_room_history (xem có sự kiện báo cháy trước đó khiến sv bỏ chạy không). Nếu CO2 giảm, học sinh đã nghỉ sớm. Tắt quạt để tiết kiệm điện.",
+      "payload": {
+        "event_id": "9f6a7a8a-1234-5678-9abc-def01234567d",
+        "event_type": "occupancy_change",
+        "room_id": "dddddddd-aaaa-4444-8888-000000000302",
+        "timestamp": "2026-09-24T10:45:00Z",
+        "event_data": {
+          "current_count": 0,
+          "delta": -40,
+          "direction": "out"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "dddddddd-aaaa-4444-8888-000000000302",
+            "room_name": "Phòng Học 302",
+            "room_type": "classroom",
+            "current_mode": "LECTURE",
+            "smoke_state": "normal"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_telemetry",
+          "get_room_history"
+        ],
+        "recommended_action": "set_fan",
+        "recommended_state": "off",
+        "reasoning_goal": "Đối chiếu sự giảm đột ngột của occupancy với sự giảm CO2 về mức nền, kết luận sinh viên đã tan lớp sớm. Tắt quạt thông gió để tiết kiệm điện."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "dddddddd-aaaa-4444-8888-000000000302",
+          "data": {
+            "window_start": "2026-09-24T10:30:00Z",
+            "window_end": "2026-09-24T10:45:00Z",
+            "co2": {
+              "min": 450.0,
+              "max": 900.0,
+              "avg": 600.0,
+              "latest": 450.0
+            },
+            "temperature": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "humidity": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "smoke_value": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "dddddddd-aaaa-4444-8888-000000000302",
+          "active_session": {
+            "session_id": "c6dc8118-d6ce-4b82-929a-16905a86eb71",
+            "lecturer_name": "TS. Le Thi E",
+            "class_code": "BIO101",
+            "started_at": "2026-09-24T09:00:00Z",
+            "attendance_deadline": "2026-09-24T09:15:00Z",
+            "is_exam": false,
+            "checked_in_count": 40,
+            "enrolled_count": 40
+          }
+        },
+        "get_occupancy": {
+          "room_id": "dddddddd-aaaa-4444-8888-000000000302",
+          "data": {
+            "current_count": 0,
+            "total_in": 40,
+            "total_out": 40,
+            "trend": "decreasing"
+          }
+        },
+        "get_room_history": {
+          "room_id": "dddddddd-aaaa-4444-8888-000000000302",
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "scenario_smoke_vs_vape",
+      "name": "Nghi vấn khói vape trong nhà vệ sinh sinh viên",
+      "description": "Cảm biến khói nhích nhẹ lên 420 trong khu vệ sinh, nhưng không có sự gia tăng nhiệt độ. Bắt buộc gọi get_telemetry và get_room_history. Phát hiện khu vực này hay có báo động giả do sinh viên hút vape lén. Xử lý: bật quạt hút thay vì kích hoạt còi cứu hỏa.",
+      "payload": {
+        "event_id": "aa7a8a9a-1234-5678-9abc-def01234567e",
+        "event_type": "smoke_detected",
+        "room_id": "eeeeeeee-bbbb-4444-8888-000000000404",
+        "timestamp": "2026-09-24T15:15:00Z",
+        "event_data": {
+          "smoke_value": 420.0,
+          "smoke_threshold": 400.0,
+          "smoke_state": "suspected"
+        },
+        "operational_context": {
+          "room": {
+            "room_id": "eeeeeeee-bbbb-4444-8888-000000000404",
+            "room_name": "WC Nam Tầng 4",
+            "room_type": "restroom",
+            "current_mode": "IDLE",
+            "smoke_state": "suspected"
+          },
+          "telemetry_summary": {
+            "window_start": "2026-09-24T00:00:00Z",
+            "window_end": "2026-09-24T00:00:00Z",
+            "temperature": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "humidity": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "co2": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "smoke_value": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            },
+            "air_quality": {
+              "min": 0,
+              "max": 0,
+              "avg": 0,
+              "latest": 0
+            }
+          },
+          "occupancy": {
+            "current_count": 0,
+            "total_in": 0,
+            "total_out": 0,
+            "trend": "stable"
+          },
+          "active_session": null,
+          "recent_events": []
+        }
+      },
+      "expected_behavior": {
+        "min_react_steps": 2,
+        "required_rag_tools": [
+          "get_telemetry",
+          "get_room_history"
+        ],
+        "recommended_action": "set_fan",
+        "recommended_state": "on",
+        "reasoning_goal": "Nhận định khói tăng nhẹ, nhiệt độ hoàn toàn không tăng, lịch sử khu vực thường có khói thuốc lá/vape. Chỉ đạo bật quạt hút để tản khói thay vì rung còi hỏa hoạn gây hoảng loạn."
+      },
+      "mock_tool_responses": {
+        "get_telemetry": {
+          "room_id": "eeeeeeee-bbbb-4444-8888-000000000404",
+          "data": {
+            "window_start": "2026-09-24T15:00:00Z",
+            "window_end": "2026-09-24T15:15:00Z",
+            "temperature": {
+              "min": 24.5,
+              "max": 24.6,
+              "avg": 24.5,
+              "latest": 24.5
+            },
+            "smoke_value": {
+              "min": 50.0,
+              "max": 420.0,
+              "avg": 100.0,
+              "latest": 420.0
+            },
+            "humidity": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "co2": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            },
+            "air_quality": {
+              "min": 0.0,
+              "max": 0.0,
+              "avg": 0.0,
+              "latest": 0.0
+            }
+          }
+        },
+        "get_schedule": {
+          "room_id": "eeeeeeee-bbbb-4444-8888-000000000404",
+          "active_session": null
+        },
+        "get_occupancy": {
+          "room_id": "eeeeeeee-bbbb-4444-8888-000000000404",
+          "data": {
+            "current_count": 2,
+            "total_in": 15,
+            "total_out": 13,
+            "trend": "stable"
+          }
+        },
+        "get_room_history": {
+          "room_id": "eeeeeeee-bbbb-4444-8888-000000000404",
+          "events": []
+        }
+      }
+    }
+  ]
+}
