@@ -87,10 +87,10 @@ class TestAllToolsExecution(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(tool_rec.tool_name, tool_name)
                 self.assertGreaterEqual(tool_rec.confidence, 0.5)
 
-                # 3. Kiểm tra phân quyền tool trong SAVING mode
+                # 3. Kiểm tra phân quyền tool trong EMERGENCY mode
                 self.assertTrue(
-                    is_tool_allowed_in_mode(tool_name, "SAVING"),
-                    f"Action Tool '{tool_name}' phải được cho phép trong SAVING mode",
+                    is_tool_allowed_in_mode(tool_name, "EMERGENCY"),
+                    f"Action Tool '{tool_name}' phải được cho phép trong EMERGENCY mode",
                 )
 
 

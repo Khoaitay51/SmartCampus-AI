@@ -10,20 +10,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.schemas.recommendation import ALLOWED_ACTION_TOOLS
-from app.tools.rag import (
-    SEARCH_HISTORY_TOOL,
-    TELEMETRY_TOOL,
-    ATTENDANCE_TOOL,
-    SCHEDULE_TOOL,
-    PREDICTIONS_TOOL,
-)
-from app.tools.actions import (
-    FAN_TOOL,
-    DOOR_TOOL,
-    BUZZER_TOOL,
-    LED_TOOL,
-    ALERT_TOOL,
-)
 
 
 @dataclass(frozen=True)
@@ -37,9 +23,33 @@ class ToolDefinition:
 # 1. RAG TOOLS — Công cụ tra cứu dữ liệu (chỉ đọc, Agent tự gọi trong ReAct)
 # ---------------------------------------------------------------------------
 RAG_TOOLS: list[ToolDefinition] = [
-    ToolDefinition(**SEARCH_HISTORY_TOOL),
-    ToolDefinition(**TELEMETRY_TOOL),
-    ToolDefinition(**ATTENDANCE_TOOL),
+    ToolDefinition(
+        name="search_history",
+        description="Semantic search qua pgvector embeddings trên telemetry summaries lịch sử.",
+        parameters={
+            "query": "string (bắt buộc)",
+            "room_id": "string (tùy chọn)",
+            "time_range": "enum ['1h', '6h', '24h', '7d']",
+        },
+    ),
+    ToolDefinition(
+        name="get_telemetry",
+        description="Query raw time-series data cho 1 metric cụ thể của 1 phòng.",
+        parameters={
+            "room_id": "string (bắt buộc)",
+            "metric": "enum ['temperature', 'humidity', 'co2', 'smoke', 'occupancy']",
+            "window": "enum ['15m', '1h', '6h']",
+        },
+    ),
+    ToolDefinition(
+        name="get_attendance",
+        description="Query attendance records theo phòng/session/lớp.",
+        parameters={
+            "room_id": "string (tùy chọn)",
+            "session_id": "string (tùy chọn)",
+            "class_code": "string (tùy chọn)",
+        },
+    ),
     ToolDefinition(
         name="compare_rooms",
         description="So sánh 1 metric giữa nhiều phòng trong 1 khoảng thời gian.",
@@ -57,8 +67,23 @@ RAG_TOOLS: list[ToolDefinition] = [
             "hours": "integer (bắt buộc)",
         },
     ),
-    ToolDefinition(**SCHEDULE_TOOL),
-    ToolDefinition(**PREDICTIONS_TOOL),
+    ToolDefinition(
+        name="get_schedule",
+        description="Query lịch học theo phòng hoặc theo ngày.",
+        parameters={
+            "room_id": "string (tùy chọn)",
+            "date": "string (tùy chọn, YYYY-MM-DD)",
+        },
+    ),
+    ToolDefinition(
+        name="get_predictions",
+        description="EWMA prediction cho 1 metric trong tương lai gần.",
+        parameters={
+            "room_id": "string (bắt buộc)",
+            "metric": "enum ['temperature', 'co2']",
+            "horizon": "enum ['15m', '30m']",
+        },
+    ),
 ]
 
 
@@ -66,8 +91,16 @@ RAG_TOOLS: list[ToolDefinition] = [
 # 2. ACTION TOOLS — Công cụ điều khiển thiết bị (được đề xuất trong finish)
 # ---------------------------------------------------------------------------
 ACTION_TOOLS: list[ToolDefinition] = [
-    ToolDefinition(**FAN_TOOL),
-    ToolDefinition(**DOOR_TOOL),
+    ToolDefinition(
+        name="set_fan",
+        description="Bật hoặc tắt quạt thông gió/làm mát trong phòng.",
+        parameters={"room_id": "string", "state": "enum ['on', 'off']"},
+    ),
+    ToolDefinition(
+        name="set_door",
+        description="Khóa hoặc mở khóa cửa phòng học.",
+        parameters={"room_id": "string", "state": "enum ['locked', 'unlocked']"},
+    ),
     ToolDefinition(
         name="set_mode",
         description="Thay đổi chế độ vận hành (FSM mode) của phòng.",
@@ -76,9 +109,25 @@ ACTION_TOOLS: list[ToolDefinition] = [
             "mode": "enum ['SAVING', 'SELF_STUDY', 'LECTURE', 'EXAM', 'LOCK', 'SUSPECTED', 'EMERGENCY']",
         },
     ),
-    ToolDefinition(**BUZZER_TOOL),
-    ToolDefinition(**ALERT_TOOL),
-    ToolDefinition(**LED_TOOL),
+    ToolDefinition(
+        name="trigger_buzzer",
+        description="Kích hoạt còi báo động trong phòng học.",
+        parameters={"room_id": "string", "pattern": "enum ['short', 'long', 'continuous']"},
+    ),
+    ToolDefinition(
+        name="send_alert",
+        description="Gửi thông báo cảnh báo tới giảng viên hoặc quản trị viên hệ thống.",
+        parameters={
+            "room_id": "string",
+            "message": "string",
+            "level": "enum ['info', 'warning', 'critical']",
+        },
+    ),
+    ToolDefinition(
+        name="set_led",
+        description="Điều khiển đèn LED hiển thị trạng thái phòng.",
+        parameters={"room_id": "string", "state": "enum ['solid', 'blink']"},
+    ),
 ]
 
 
@@ -106,13 +155,22 @@ def render_tool_desc(tools: list[ToolDefinition]) -> str:
 
 # Ma trận quyền hạn tool theo chế độ phòng (room_mode)
 MODE_PERMISSIONS: dict[str, set[str]] = {
-    "SAVING": {"set_fan", "set_door", "set_mode", "trigger_buzzer", "send_alert", "set_led"},
+    # Nhóm sinh hoạt/hoạt động thường: 
+    "SAVING": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
     "SELF_STUDY": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
     "LECTURE": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
-    "EXAM": {"set_fan", "send_alert", "set_led", "set_mode"},  # Không tự ý set_door / trigger_buzzer trong giờ thi
-    "LOCK": {"send_alert"},  # Giữ nguyên khóa cửa
-    "SUSPECTED": {"set_fan", "set_door", "trigger_buzzer", "send_alert"},
-    "EMERGENCY": {"set_door", "trigger_buzzer", "send_alert"},
+    
+    # Nhóm kiểm soát gắt gao (chỉ cho phép hành động kín đáo, tránh gây loạn):
+    "EXAM": {"set_fan", "send_alert", "set_led", "set_mode"}, 
+    
+    # Nhóm an ninh: Chỉ cảnh báo và quan sát, tuyệt đối không can thiệp vật lý (cửa/quạt) để giữ hiện trường
+    "LOCK": {"send_alert", "trigger_buzzer", "set_mode"}, 
+    
+    # Nhóm theo dõi sự cố nghi ngờ: Có thể bật đèn, quạt (tản khói nhẹ) và cảnh báo, chờ confirm để sang EMERGENCY
+    "SUSPECTED": {"set_fan", "send_alert", "set_led", "trigger_buzzer", "set_mode"},
+    
+    # Nhóm khẩn cấp: Toàn quyền can thiệp vật lý và hệ thống cảnh báo
+    "EMERGENCY": {"set_fan", "set_door", "set_mode", "trigger_buzzer", "send_alert", "set_led"},
 }
 
 

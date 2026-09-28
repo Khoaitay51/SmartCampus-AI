@@ -15,7 +15,7 @@ _STEP_RE = re.compile(
     r"(?:Thought|Think):\s*(?P<thought>.*?)\n"
     r"(?:Action|Tool Call):\s*(?P<action>.*?)\n"
     r"(?:Action Input|Tool Input):\s*(?P<action_input>\{.*?\})\s*(?:\n|$)",
-    re.DOTALL,
+    re.DOTALL | re.IGNORECASE,
 )
 
 
@@ -76,7 +76,12 @@ def parse_react_step(raw_text: str) -> ParsedReactStep:
                 action_input = json.loads(json_candidate)
                 break
             except json.JSONDecodeError:
-                continue
+                try:
+                    import ast
+                    action_input = ast.literal_eval(json_candidate)
+                    break
+                except (SyntaxError, ValueError):
+                    continue
 
         if action_input is None:
             raise OutputParseError(f"Action Input không phải JSON hợp lệ sau khi repair: {raw_input[:200]}")

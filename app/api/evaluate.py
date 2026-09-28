@@ -28,11 +28,13 @@ EVALUATE_TIMEOUT_SECONDS = getattr(settings, "EVALUATE_TIMEOUT_SECONDS", 25)
 def get_agent(
     llm: Any | None = None,
     rag_executor: Any | None = None,
+    enforce_rag_guard: bool = False,
 ) -> ReActXenAgent:
     """Khởi tạo instance ReActXenAgent với LLM Client và RAG tool executor."""
     return ReActXenAgent(
         llm=llm or build_default_fallback_llm(GeminiLLMClient),
         execute_rag_tool=rag_executor or execute_rag_tool,
+        enforce_rag_guard=enforce_rag_guard,
     )
 
 
