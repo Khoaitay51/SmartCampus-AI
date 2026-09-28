@@ -148,10 +148,27 @@ def _summarize(result: dict[str, Any], limit: int = 200) -> str:
 def get_mock_rag_data(tool_name: str, params: dict[str, Any], context: Any = None) -> dict[str, Any]:
     """Tạo dữ liệu mock thông minh và thực tế cho RAG tools khi backend offline.
 
-    Tự động trích xuất thông số từ context (nhiệt độ, occupancy, session...) để tạo
-    kết quả logic và phù hợp nhất với kịch bản đang chạy.
+    Ưu tiên tra cứu từ mock_store_data (nếu room_id khớp scenario) trước,
+    rồi mới fallback về logic mock cũ dựa trên context.
     """
     room_id = params.get("room_id") or "mock-room-01"
+
+    # ── Ưu tiên: tra cứu từ centralized mock store theo room_id ──
+    try:
+        from tests.fixtures.mock_store_data import SCENARIOS
+        for scenario in SCENARIOS.values():
+            scenario_room = scenario["trigger_payload"]["event"].get("room_id", "")
+            if str(room_id) == str(scenario_room):
+                store = scenario.get("rag_store", {})
+                if tool_name in store:
+                    logger.info(
+                        "Mock Store hit: scenario='%s' tool='%s'",
+                        scenario["id"], tool_name,
+                    )
+                    return store[tool_name]
+                break  # room khớp nhưng tool không có → fallback
+    except ImportError:
+        pass  # mock_store_data chưa install → dùng logic cũ
 
     # Trích xuất dữ liệu bối cảnh nếu có
     curr_temp = 36.2

@@ -110,10 +110,12 @@ class ReActXenAgent:
         self,
         llm: LLMClient | None = None,
         execute_rag_tool: RagToolExecutor | None = None,
+        enforce_rag_guard: bool = False,
     ):
         self._llm = llm or build_default_fallback_llm(GeminiLLMClient)
         self._execute_rag_tool = execute_rag_tool or default_rag_executor
         self._runner = ReActLoopRunner(self._llm, self._execute_rag_tool)
+        self._enforce_rag_guard = enforce_rag_guard
 
     def _create_rule_fallback_response(
         self,
@@ -348,6 +350,56 @@ class ReActXenAgent:
                             )
                         )
                         return None, consecutive_parse_errors, consecutive_rag_errors
+
+                # Guard 2: Permission check for Multi-step Reasoning
+                if answer.recommendation is not None:
+                    room_mode = getattr(state.context.room, "current_mode", "NORMAL") if getattr(state.context, "room", None) else "NORMAL"
+                    if not is_tool_allowed_in_mode(answer.recommendation.tool_name, room_mode):
+                        observation = (
+                            f"[SYSTEM] Bị từ chối: Tool '{answer.recommendation.tool_name}' KHÔNG ĐƯỢC PHÉP sử dụng "
+                            f"trong chế độ phòng '{room_mode}'. Hãy suy luận lại và chọn một tool khác hợp lệ hơn "
+                            f"(nếu cần) hoặc skip."
+                        )
+                        state.trajectory.append(
+                            TrajectoryStep(
+                                self_ask=step.self_ask, thought=step.thought, action=step.action,
+                                action_input=step.action_input, observation=observation,
+                            )
+                        )
+                        state.structured_trace.append(
+                            StructuredTraceStep(
+                                step=step_num,
+                                decision="guard_blocked_finish",
+                                reason_code="PERMISSION_DENIED",
+                                observation_summary=observation[:300],
+                                action_input=step.action_input,
+                            )
+                        )
+                        continue
+
+                    # Guard 3: Confidence check
+                    if answer.recommendation.confidence < CONFIDENCE_THRESHOLD:
+                        observation = (
+                            f"[SYSTEM] Bị từ chối: Confidence {answer.recommendation.confidence} quá thấp "
+                            f"(< {CONFIDENCE_THRESHOLD}). Nếu không chắc chắn, hãy tìm thêm bằng chứng (RAG) "
+                            f"hoặc đặt skip=true nếu thực sự không đủ điều kiện hành động."
+                        )
+                        state.trajectory.append(
+                            TrajectoryStep(
+                                self_ask=step.self_ask, thought=step.thought, action=step.action,
+                                action_input=step.action_input, observation=observation,
+                            )
+                        )
+                        state.structured_trace.append(
+                            StructuredTraceStep(
+                                step=step_num,
+                                decision="guard_blocked_finish",
+                                reason_code="LOW_CONFIDENCE",
+                                observation_summary=observation[:300],
+                                action_input=step.action_input,
+                            )
+                        )
+                        continue
 
                 state.trajectory.append(
                     TrajectoryStep(
