@@ -16,28 +16,32 @@ from app.config.settings import settings
 import logging
 import asyncio
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+def get_ollama_base_url() -> str:
+    return getattr(settings, "OLLAMA_BASE_URL", os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
+
+def get_embedding_model() -> str:
+    return getattr(settings, "OLLAMA_EMBEDDING_MODEL", getattr(settings, "EMBEDDING_MODEL", "nomic-embed-text"))
+
 CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash")
-EMBEDDING_DIM = 768
+EMBEDDING_DIM = getattr(settings, "EMBEDDING_DIM", 768)
 EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "32"))
 
-gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY")) if os.getenv("GEMINI_API_KEY") else None
 logger = logging.getLogger(__name__)
 
 
 async def get_embedding(text: str) -> list[float]:
     """
     Generate embedding vector for input text matching settings.EMBEDDING_DIM.
-    Prioritizes Voyage AI if VOYAGE_API_KEY is set, else Ollama / Gemini or fallback vector.
+    Prioritizes Voyage AI if VOYAGE_API_KEY is set, else Ollama (nomic-embed-text) or fallback vector.
     """
-    target_dim = settings.EMBEDDING_DIM
-    if settings.VOYAGE_API_KEY:
+    target_dim = getattr(settings, "EMBEDDING_DIM", 768)
+    if getattr(settings, "VOYAGE_API_KEY", ""):
         try:
             req = Request(
                 "https://api.voyageai.com/v1/embeddings",
                 data=json.dumps({
-                    "model": settings.EMBEDDING_MODEL,
+                    "model": getattr(settings, "EMBEDDING_MODEL", "voyage-3"),
                     "input": [text],
                 }).encode("utf-8"),
                 headers={
@@ -56,15 +60,21 @@ async def get_embedding(text: str) -> list[float]:
         except Exception as e:
             logger.warning("Voyage AI embedding request failed: %s", e)
 
-    # Fallback to Ollama if configured
+    # Ưu tiên Ollama với nomic-embed-text
     try:
         loop = asyncio.get_running_loop()
-        res = await loop.run_in_executor(None, lambda: post_ollama("/api/embed", {"model": EMBEDDING_MODEL, "input": [text]}))
+        res = await loop.run_in_executor(
+            None,
+            lambda: post_ollama("/api/embed", {"model": get_embedding_model(), "input": [text]}),
+        )
         vecs = res.get("embeddings", [])
         if vecs and len(vecs[0]) == target_dim:
             return vecs[0]
-    except Exception:
-        pass
+        elif vecs:
+            logger.warning("Ollama embedding dimension mismatch: expected %d, got %d", target_dim, len(vecs[0]))
+            return vecs[0]
+    except Exception as ollama_err:
+        logger.debug("Ollama embedding call failed: %s", ollama_err)
 
     # Default fallback: return zero vector of correct dimension
     return [0.0] * target_dim
@@ -86,7 +96,8 @@ def chunk_text(text: str, chunk_size: int = 3500, overlap: int = 500) -> list[st
 
 
 def post_ollama(path: str, payload: dict) -> dict:
-    url = f"{OLLAMA_BASE_URL.rstrip('/')}{path}"
+    base_url = get_ollama_base_url()
+    url = f"{base_url}{path}"
     request = Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
@@ -101,26 +112,26 @@ def post_ollama(path: str, payload: dict) -> dict:
         detail = e.read().decode("utf-8")
         raise RuntimeError(f"Ollama request failed ({e.code}): {detail}") from e
     except URLError as e:
-        raise RuntimeError(f"Cannot connect to Ollama at {OLLAMA_BASE_URL}: {e}") from e
+        raise RuntimeError(f"Cannot connect to Ollama at {base_url}: {e}") from e
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
 
+    model_name = get_embedding_model()
     result = post_ollama("/api/embed", {
-        "model": EMBEDDING_MODEL,
+        "model": model_name,
         "input": texts,
     })
     vectors = result.get("embeddings")
     if vectors is None:
         raise RuntimeError(f"Ollama embedding response missing 'embeddings': {result}")
 
+    target_dim = getattr(settings, "EMBEDDING_DIM", 768)
     for vector in vectors:
-        if len(vector) != EMBEDDING_DIM:
-            raise RuntimeError(
-                f"Embedding dimension mismatch: expected {EMBEDDING_DIM}, got {len(vector)}"
-            )
+        if len(vector) != target_dim:
+            logger.warning("Embedding dimension: expected %d, got %d", target_dim, len(vector))
 
     return vectors
 

@@ -56,6 +56,106 @@ class RagCallBudget:
         self.log.append({"tool": tool, "params": params, "result_summary": result_summary})
 
 
+async def query_vector_memory(
+    query: str,
+    room_id: str | None = None,
+    time_range: str = "24h",
+    limit: int = 3,
+) -> dict[str, Any] | None:
+    """Truy vấn kết hợp Semantic Search trên cả Contextual Memory (log động) và Campus Documents (SOP tĩnh)."""
+    try:
+        from app.database.session import async_session
+        from app.gateway.embeddings import get_embedding
+        from sqlalchemy import text
+
+        query_vec = await get_embedding(query)
+        if not any(query_vec):
+            return None
+
+        results = []
+        async with async_session() as session:
+            # 1. Tìm trong Contextual Memory (lịch sử vi khí hậu theo phòng)
+            room_filter = "AND room_id = :room_id" if room_id else ""
+            sql_context = text(f"""
+                SELECT room_id, period, summary_text, 1 - (embedding <=> :vec) AS similarity
+                FROM agent_memory.contextual_memory_logs
+                WHERE embedding IS NOT NULL {room_filter}
+                ORDER BY embedding <=> :vec
+                LIMIT :limit;
+            """)
+            params: dict[str, Any] = {"vec": str(query_vec), "limit": limit}
+            if room_id:
+                params["room_id"] = room_id
+
+            rows_ctx = (await session.execute(sql_context, params)).fetchall()
+            for r in rows_ctx:
+                results.append({
+                    "source": "contextual_memory",
+                    "room_id": r[0],
+                    "period": r[1],
+                    "content": r[2],
+                    "similarity": round(float(r[3]), 3),
+                })
+
+            # 2. Tìm trong Campus Documents (SOP, quy chuẩn)
+            sql_docs = text("""
+                SELECT doc_type, title, content, 1 - (embedding <=> :vec) AS similarity
+                FROM agent_memory.campus_documents
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> :vec
+                LIMIT :limit;
+            """)
+            rows_docs = (await session.execute(sql_docs, {"vec": str(query_vec), "limit": limit})).fetchall()
+            for r in rows_docs:
+                results.append({
+                    "source": "campus_sop",
+                    "doc_type": r[0],
+                    "title": r[1],
+                    "content": r[2],
+                    "similarity": round(float(r[3]), 3),
+                })
+
+        if not results:
+            return None
+
+        results.sort(key=lambda x: x["similarity"], reverse=True)
+        return {
+            "query": query,
+            "room_id": room_id,
+            "time_range": time_range,
+            "results": results[:limit],
+        }
+    except Exception as exc:
+        logger.debug("Không thể query pgvector memory: %s", exc)
+        return None
+
+
+async def get_latest_contextual_summary(room_id: str, hours: int = 24) -> str | None:
+    """Lấy bản ghi tóm tắt daily hoặc weekly gần nhất từ contextual_memory_logs."""
+    try:
+        from app.database.session import async_session
+        from app.database.models import ContextualMemoryLog
+        from sqlalchemy import select, and_
+
+        target_period = "daily" if hours <= 24 else "weekly"
+        async with async_session() as session:
+            stmt = (
+                select(ContextualMemoryLog.summary_text)
+                .where(
+                    and_(
+                        ContextualMemoryLog.room_id == room_id,
+                        ContextualMemoryLog.period == target_period,
+                    )
+                )
+                .order_by(ContextualMemoryLog.end_time.desc())
+                .limit(1)
+            )
+            return (await session.execute(stmt)).scalar_one_or_none()
+    except Exception as exc:
+        logger.debug("Không thể lấy contextual summary cho room %s: %s", room_id, exc)
+        return None
+
+
 class RagClient:
     """Mỗi method map 1-1 với 1 RAG tool trong section 3b, gọi qua /api/rag/* (section 5)."""
 
@@ -71,8 +171,15 @@ class RagClient:
     async def search_history(
         self, query: str, room_id: str | None = None, time_range: TimeRange = "24h"
     ) -> dict[str, Any]:
-        """Semantic search qua pgvector embeddings trên telemetry summaries."""
+        """Semantic search qua pgvector embeddings trên telemetry summaries & campus documents."""
         self.budget.consume("search_history")
+        
+        # 1. Thử truy vấn vector từ pgvector DB cục bộ
+        db_results = await query_vector_memory(query, room_id=room_id, time_range=time_range)
+        if db_results and db_results.get("results"):
+            return db_results
+
+        # 2. Fallback sang Gateway nếu DB chưa có bản ghi
         return await self._client.post(
             "/rag/search", json={"query": query, "room_id": room_id, "time_range": time_range}
         )
@@ -107,9 +214,23 @@ class RagClient:
         )
 
     async def get_room_history(self, room_id: str, hours: int = 24) -> dict[str, Any]:
-        """Lịch sử state transitions (FSM) của 1 phòng."""
+        """Lịch sử state transitions (FSM) của 1 phòng kết hợp contextual summary."""
         self.budget.consume("get_room_history")
-        return await self._client.get(f"/rooms/{room_id}/history", params={"hours": hours})
+        try:
+            data = await self._client.get(f"/rooms/{room_id}/history", params={"hours": hours})
+        except Exception:
+            data = {"room_id": room_id, "hours": hours, "transitions": []}
+
+        if not isinstance(data, dict):
+            data = {"room_id": room_id, "hours": hours, "transitions": data}
+
+        # Bổ sung bản tóm tắt contextual summary gần nhất
+        latest_summary = await get_latest_contextual_summary(room_id, hours=hours)
+        if latest_summary:
+            data["contextual_summary"] = latest_summary
+
+        return data
+
 
     async def get_schedule(self, room_id: str | None = None, date: str | None = None) -> dict[str, Any]:
         """Query lịch học theo phòng hoặc theo ngày."""

@@ -1,4 +1,92 @@
 services:
+  # ---------------------------------------------------------------------------
+  # 1. PostgreSQL với pgvector (Vector Database & Relational Database)
+  # ---------------------------------------------------------------------------
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: smartcampus-pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smartcampus}
+      POSTGRES_USER: ${POSTGRES_USER:-smartcampus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartcampus} -d ${POSTGRES_DB:-smartcampus}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - smartcampus-net
+
+  # ---------------------------------------------------------------------------
+  # 2. Ollama Local LLM & Embedding Server
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: smartcampus-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    # Mở comment phần deploy bên dưới nếu máy tính của bạn có NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - smartcampus-net
+
+  # ---------------------------------------------------------------------------
+  # 3. Ollama Init Service (Tự động tải nomic-embed-text và Qwen SLM)
+  # ---------------------------------------------------------------------------
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: smartcampus-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - smartcampus-net
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "================================================================="
+        echo " [Ollama-Init] Kiem tra ket noi va tai model ve Ollama..."
+        echo "================================================================="
+        export OLLAMA_HOST=http://ollama:11434
+        
+        echo ">>> [1/2] Dang pull model Embedding: nomic-embed-text (dim=768)..."
+        ollama pull nomic-embed-text
+        
+        echo ">>> [2/2] Dang pull Small Language Model: qwen2:1.5b..."
+        ollama pull qwen2:1.5b
+        
+        echo "================================================================="
+        echo " [Ollama-Init] Da tai thanh cong tat ca cac models!"
+        echo "================================================================="
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # 4. SmartCampus AI Agent Service (FastAPI + ReActXenAgent + RAG)
+  # ---------------------------------------------------------------------------
   ai-agent:
     build:
       context: .
@@ -9,15 +97,39 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartcampus:change-this-local-password@host.docker.internal:5432/smartcampus
-      BACKEND_BASE_URL: http://host.docker.internal:8000
+      # Kết nối nội bộ container tới container db và ollama
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartcampus}:${POSTGRES_PASSWORD:-change-this-local-password}@db:5432/${POSTGRES_DB:-smartcampus}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+      OLLAMA_MODEL: qwen2:1.5b
+      OLLAMA_FALLBACK_MODEL: qwen2:1.5b
+      EMBEDDING_MODEL: nomic-embed-text
+      EMBEDDING_DIM: 768
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://host.docker.internal:8000}
       AUDIT_OUTPUT_DIR: /app/output
     ports:
-      - "8001:8000" # Mở port 8001 ra ngoài máy thật, trỏ vào 8000 bên trong container
+      - "${AI_PORT:-8001}:8000"
     volumes:
       - .:/app
       - ./output:/app/output
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Chạy server FastAPI liên tục thay vì chạy file demo
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - smartcampus-net
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgvector_data:
+    name: smartcampus_pgvector_data
+  ollama_data:
+    name: smartcampus_ollama_data
+
+networks:
+  smartcampus-net:
+    name: smartcampus-network
+    driver: bridge

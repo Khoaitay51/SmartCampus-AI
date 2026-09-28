@@ -13,13 +13,20 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # llm.py
+    # llm
+    LLM_PROVIDER: str = Field(default="gemini", description="Provider chính: 'gemini' hoặc 'ollama'")
     GEMINI_API_KEY: str = Field(default="", description="API key cho Google Gemini")
     AGENT: str = Field(default="gemini-3.6-flash", description="Model Gemini dùng cho ReAct/Review/Reflect")
+    
+    # Ollama Local SLM & Embeddings
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Base URL cho Ollama service")
+    OLLAMA_MODEL: str = Field(default="qwen2:1.5b", description="Model SLM cho Ollama (vd: qwen2:1.5b, qwen2:0.5b)")
+    OLLAMA_EMBEDDING_MODEL: str = Field(default="nomic-embed-text", description="Model embedding chạy trên Ollama")
+    OLLAMA_FALLBACK_MODEL: str = Field(default="qwen2:1.5b", description="Model SLM Ollama dùng khi fallback")
 
-    # db.py
+    # db.py (PostgreSQL với pgvector)
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/smartcampus",
+        default="postgresql+asyncpg://smartcampus:change-this-local-password@localhost:5432/smartcampus",
         description="Database URL kết nối PostgreSQL/pgvector",
     )
     DB_POOL_MIN_SIZE: int = Field(default=2, ge=1)
@@ -27,8 +34,8 @@ class Settings(BaseSettings):
 
     # EMBEDDING
     VOYAGE_API_KEY: str = Field(default="", description="API key Voyage AI cho search_history")
-    EMBEDDING_MODEL: str = Field(default="voyage-3")
-    EMBEDDING_DIM: int = Field(default=1024, description="Phải khớp VECTOR(n) trong sql/schema.sql")
+    EMBEDDING_MODEL: str = Field(default="nomic-embed-text", description="Tên embedding model (nomic-embed-text hoặc voyage-3)")
+    EMBEDDING_DIM: int = Field(default=768, description="Số chiều vector (768 với nomic-embed-text, 1024 với voyage-3)")
 
     # gateway/
     BACKEND_BASE_URL: str = Field(default="http://localhost:8000/api", description="Base URL của SmartCampus backend chính")

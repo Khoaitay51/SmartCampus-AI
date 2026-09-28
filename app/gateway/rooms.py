@@ -58,3 +58,9 @@ class RoomsClient:
         """GET /api/rooms/{room_id}/history?hours=... — state change history."""
         data = await self._client.get(f"/rooms/{room_id}/history", params={"hours": hours})
         return data.get("transitions", data) if isinstance(data, dict) else data
+
+    async def get_raw_summaries(self, limit: int = 50) -> list[dict[str, Any]]:
+        """GET /api/tool/reasoning/summaries — telemetry summaries từ raw_summarizer của edge."""
+        data = await self._client.get("/tool/reasoning/summaries", params={"limit": limit})
+        return data if isinstance(data, list) else data.get("rows", data)
+
