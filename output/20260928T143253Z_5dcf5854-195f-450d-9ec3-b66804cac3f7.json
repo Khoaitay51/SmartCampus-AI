@@ -1,0 +1,144 @@
+{
+  "event": {
+    "event_id": "5dcf5854-195f-450d-9ec3-b66804cac3f7",
+    "event_type": "occupancy_change",
+    "room_id": "19de4b71-3f3c-486e-a2d7-de1f06976945",
+    "timestamp": "2026-09-22T22:15:00+07:00",
+    "event_data": {
+      "current_count": 4,
+      "delta": 4,
+      "direction": "in",
+      "trigger": "occupancy_spike"
+    },
+    "operational_context": {
+      "room": {
+        "room_id": "19de4b71-3f3c-486e-a2d7-de1f06976945",
+        "room_name": "Phong C305",
+        "room_type": "study_room",
+        "current_mode": "IDLE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T22:00:00+07:00",
+        "window_end": "2026-09-22T22:15:00+07:00",
+        "temperature": {
+          "min": 25.0,
+          "max": 26.0,
+          "avg": 25.5,
+          "latest": 25.8
+        },
+        "humidity": {
+          "min": 55.0,
+          "max": 62.0,
+          "avg": 58.0,
+          "latest": 60.0
+        },
+        "co2": {
+          "min": 400.0,
+          "max": 600.0,
+          "avg": 480.0,
+          "latest": 590.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 5.0,
+          "avg": 1.5,
+          "latest": 2.0
+        },
+        "air_quality": {
+          "min": 80.0,
+          "max": 95.0,
+          "avg": 88.0,
+          "latest": 85.0
+        }
+      },
+      "occupancy": {
+        "current_count": 4,
+        "total_in": 4,
+        "total_out": 0,
+        "trend": "increasing"
+      },
+      "active_session": null,
+      "recent_events": [],
+      "environment_context": {
+        "source": "run_agent_demo.local_context",
+        "since": "2026-09-22T22:00:00+07:00",
+        "row_count": 2,
+        "readings": [
+          {
+            "environment_id": null,
+            "room_id": "19de4b71-3f3c-486e-a2d7-de1f06976945",
+            "temperature": 25.8,
+            "humidity": 60.0,
+            "smoke_detected": true,
+            "smoke_value": 2.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 590,
+            "air_quality": 85,
+            "room_mode": "IDLE",
+            "message_id": "demo-19de4b71-3f3c-486e-a2d7-de1f06976945-10",
+            "source_timestamp": "2026-09-22T22:05:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T22:05:00+07:00",
+            "environment_timestamp": "2026-09-22T22:05:00+07:00"
+          },
+          {
+            "environment_id": null,
+            "room_id": "19de4b71-3f3c-486e-a2d7-de1f06976945",
+            "temperature": 25.8,
+            "humidity": 60.0,
+            "smoke_detected": true,
+            "smoke_value": 2.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 590,
+            "air_quality": 85,
+            "room_mode": "IDLE",
+            "message_id": "demo-19de4b71-3f3c-486e-a2d7-de1f06976945-0",
+            "source_timestamp": "2026-09-22T22:15:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T22:15:00+07:00",
+            "environment_timestamp": "2026-09-22T22:15:00+07:00"
+          }
+        ]
+      }
+    }
+  },
+  "response": {
+    "event_id": "5dcf5854-195f-450d-9ec3-b66804cac3f7",
+    "recommendation": null,
+    "alternatives": [],
+    "analysis": "[FALLBACK: rules] Không quy tắc nào kích hoạt (mode=IDLE); giữ nguyên trạng thái.",
+    "skip": true,
+    "skip_reason": "no_rule_matched",
+    "tool_calls_log": [],
+    "structured_trace": [],
+    "is_fallback": true,
+    "fallback_levels": [
+      "rules"
+    ],
+    "fallback_audit_log": [
+      {
+        "tool": "fallback",
+        "level": "rules",
+        "detail": "ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+      },
+      {
+        "_type": "fallback_audit",
+        "tool": "fallback",
+        "level": "rules",
+        "component": "agent",
+        "detail": "Chuyển sang rule fallback: ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "ts": 1790605973.0133092
+      },
+      {
+        "_type": "fallback_audit",
+        "tool": "fallback",
+        "level": "rules",
+        "component": "rules",
+        "detail": "dùng rule-based cho event 'occupancy_change': ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "ts": 1790605973.0134428
+      }
+    ]
+  },
+  "recorded_at": "2026-09-28T14:32:53.014138+00:00"
+}

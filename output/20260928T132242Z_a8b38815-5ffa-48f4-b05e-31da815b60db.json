@@ -1,0 +1,207 @@
+{
+  "event": {
+    "event_id": "a8b38815-5ffa-48f4-b05e-31da815b60db",
+    "event_type": "manual_trigger",
+    "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82",
+    "timestamp": "2026-09-22T07:00:00+07:00",
+    "event_data": {
+      "triggered_by": "staff_badge_0042",
+      "intent": "pre_cool_before_class",
+      "requested_tool": "set_fan",
+      "notes": "Phong can lam mat truoc gio hoc 7:30"
+    },
+    "operational_context": {
+      "room": {
+        "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82",
+        "room_name": "Phong A101",
+        "room_type": "lecture_hall",
+        "current_mode": "MAINTENANCE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T06:45:00+07:00",
+        "window_end": "2026-09-22T07:00:00+07:00",
+        "temperature": {
+          "min": 30.0,
+          "max": 33.0,
+          "avg": 31.5,
+          "latest": 33.0
+        },
+        "humidity": {
+          "min": 70.0,
+          "max": 80.0,
+          "avg": 75.0,
+          "latest": 78.0
+        },
+        "co2": {
+          "min": 400.0,
+          "max": 450.0,
+          "avg": 420.0,
+          "latest": 440.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0,
+          "latest": 0.0
+        },
+        "air_quality": {
+          "min": 80.0,
+          "max": 95.0,
+          "avg": 88.0,
+          "latest": 90.0
+        }
+      },
+      "occupancy": {
+        "current_count": 1,
+        "total_in": 1,
+        "total_out": 0,
+        "trend": "stable"
+      },
+      "active_session": null,
+      "recent_events": [],
+      "environment_context": {
+        "source": "run_agent_demo.local_context",
+        "since": "2026-09-22T06:45:00+07:00",
+        "row_count": 2,
+        "readings": [
+          {
+            "environment_id": null,
+            "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82",
+            "temperature": 33.0,
+            "humidity": 78.0,
+            "smoke_detected": false,
+            "smoke_value": 0.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 440,
+            "air_quality": 90,
+            "room_mode": "MAINTENANCE",
+            "message_id": "demo-d672fe54-d427-4a72-9b21-caa401f4bd82-10",
+            "source_timestamp": "2026-09-22T06:50:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T06:50:00+07:00",
+            "environment_timestamp": "2026-09-22T06:50:00+07:00"
+          },
+          {
+            "environment_id": null,
+            "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82",
+            "temperature": 33.0,
+            "humidity": 78.0,
+            "smoke_detected": false,
+            "smoke_value": 0.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 440,
+            "air_quality": 90,
+            "room_mode": "MAINTENANCE",
+            "message_id": "demo-d672fe54-d427-4a72-9b21-caa401f4bd82-0",
+            "source_timestamp": "2026-09-22T07:00:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T07:00:00+07:00",
+            "environment_timestamp": "2026-09-22T07:00:00+07:00"
+          }
+        ]
+      }
+    }
+  },
+  "response": {
+    "event_id": "a8b38815-5ffa-48f4-b05e-31da815b60db",
+    "recommendation": {
+      "tool_name": "set_fan",
+      "tool_params": {
+        "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82",
+        "state": "on"
+      },
+      "reason": "Bật quạt làm mát phòng học theo yêu cầu thủ công của nhân viên để chuẩn bị trước giờ học CS101 (07:30) khi nhiệt độ phòng đang đạt 33.0°C.",
+      "confidence": 0.88,
+      "urgency": "medium"
+    },
+    "alternatives": [],
+    "analysis": "get_schedule: Xác nhận có lớp CS101 sắp bắt đầu lúc 07:30. get_room_history: Không có xung đột sự kiện khẩn cấp nào. Nhiệt độ phòng hiện tại cao (33.0°C), yêu cầu pre-cool phù hợp với ngữ cảnh vận hành.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": [
+      {
+        "tool": "get_room_history",
+        "params": {
+          "hours": 1,
+          "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82"
+        },
+        "result_summary": "{\"room_id\": \"d672fe54-d427-4a72-9b21-caa401f4bd82\", \"hours\": 1, \"transitions\": [{\"timestamp\": \"2026-09-22T07:00:00+07:00\", \"mode\": \"IDLE\", \"trigger\": \"schedule\"}, {\"timestamp\": \"2026-09-22T07:30:00+07:00\", \"mode\": \"MAINTENANCE\", \"trigger\": \"class_start\"}]}",
+        "level": null,
+        "detail": null,
+        "component": null,
+        "ts": null
+      },
+      {
+        "tool": "get_schedule",
+        "params": {
+          "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82"
+        },
+        "result_summary": "{\"room_id\": \"d672fe54-d427-4a72-9b21-caa401f4bd82\", \"date\": \"today\", \"active_session\": {\"class_code\": \"CS101\", \"subject\": \"Nhập môn Hệ thống IoT\", \"lecturer\": \"TS. Nguyen Van A\", \"start\": \"07:30\", \"end\": \"11:30\", \"room_mode\": \"MAINTENANCE\"}}",
+        "level": null,
+        "detail": null,
+        "component": null,
+        "ts": null
+      }
+    ],
+    "structured_trace": [
+      {
+        "step": 1,
+        "decision": "call_tool",
+        "tool": "get_room_history",
+        "reason_code": "Có sự kiện hoặc thay đổi trạng thái gần đây nào xung đột với yêu cầu bật quạt làm mát thủ công không?",
+        "evidence_ids": [
+          "call_get_room_history_1"
+        ],
+        "observation_summary": "{\"room_id\": \"d672fe54-d427-4a72-9b21-caa401f4bd82\", \"hours\": 1, \"transitions\": [{\"timestamp\": \"2026-09-22T07:00:00+07:00\", \"mode\": \"IDLE\", \"trigger\": \"schedule\"}, {\"timestamp\": \"2026-09-22T07:30:00+07:00\", \"mode\": \"MAINTENANCE\", \"trigger\": \"class_start\"}]}",
+        "action_input": {
+          "hours": 1,
+          "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82"
+        }
+      },
+      {
+        "step": 2,
+        "decision": "call_tool",
+        "tool": "get_schedule",
+        "reason_code": "Phòng có lịch học nào sắp diễn ra hay đang diễn ra không?",
+        "evidence_ids": [
+          "call_get_schedule_2"
+        ],
+        "observation_summary": "{\"room_id\": \"d672fe54-d427-4a72-9b21-caa401f4bd82\", \"date\": \"today\", \"active_session\": {\"class_code\": \"CS101\", \"subject\": \"Nhập môn Hệ thống IoT\", \"lecturer\": \"TS. Nguyen Van A\", \"start\": \"07:30\", \"end\": \"11:30\", \"room_mode\": \"MAINTENANCE\"}}",
+        "action_input": {
+          "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82"
+        }
+      },
+      {
+        "step": 3,
+        "decision": "finish",
+        "tool": null,
+        "reason_code": "GOAL_ACCOMPLISHED",
+        "evidence_ids": [
+          "a8b38815-5ffa-48f4-b05e-31da815b60db"
+        ],
+        "observation_summary": "finished",
+        "action_input": {
+          "final_json": {
+            "skip": false,
+            "recommendation": {
+              "tool_name": "set_fan",
+              "tool_params": {
+                "room_id": "d672fe54-d427-4a72-9b21-caa401f4bd82",
+                "state": "on"
+              },
+              "reason": "Bật quạt làm mát phòng học theo yêu cầu thủ công của nhân viên để chuẩn bị trước giờ học CS101 (07:30) khi nhiệt độ phòng đang đạt 33.0°C.",
+              "confidence": 0.88,
+              "urgency": "medium"
+            },
+            "analysis": "get_schedule: Xác nhận có lớp CS101 sắp bắt đầu lúc 07:30. get_room_history: Không có xung đột sự kiện khẩn cấp nào. Nhiệt độ phòng hiện tại cao (33.0°C), yêu cầu pre-cool phù hợp với ngữ cảnh vận hành."
+          }
+        }
+      }
+    ],
+    "is_fallback": false,
+    "fallback_levels": [],
+    "fallback_audit_log": []
+  },
+  "recorded_at": "2026-09-28T13:22:42.422606+00:00"
+}

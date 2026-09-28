@@ -1,0 +1,162 @@
+{
+  "event": {
+    "event_id": "68013ae2-0ba1-4dd5-8ff7-ab920b9e0b60",
+    "event_type": "rfid_unknown",
+    "room_id": "153d9b4f-23dc-4cf9-827f-8f1ea8081e2b",
+    "timestamp": "2026-09-22T13:05:00+07:00",
+    "event_data": {
+      "card_uid": "A3:F7:12:09",
+      "reader_id": "door-main",
+      "scan_result": "unknown"
+    },
+    "operational_context": {
+      "room": {
+        "room_id": "153d9b4f-23dc-4cf9-827f-8f1ea8081e2b",
+        "room_name": "Phong thi A201",
+        "room_type": "exam_room",
+        "current_mode": "EXAM",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T12:50:00+07:00",
+        "window_end": "2026-09-22T13:05:00+07:00",
+        "temperature": {
+          "min": 24.0,
+          "max": 26.5,
+          "avg": 25.2,
+          "latest": 25.5
+        },
+        "humidity": {
+          "min": 50.0,
+          "max": 58.0,
+          "avg": 54.0,
+          "latest": 55.0
+        },
+        "co2": {
+          "min": 400.0,
+          "max": 700.0,
+          "avg": 550.0,
+          "latest": 680.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 1.0,
+          "avg": 0.2,
+          "latest": 0.0
+        },
+        "air_quality": {
+          "min": 78.0,
+          "max": 95.0,
+          "avg": 87.0,
+          "latest": 84.0
+        }
+      },
+      "occupancy": {
+        "current_count": 35,
+        "total_in": 36,
+        "total_out": 1,
+        "trend": "stable"
+      },
+      "active_session": {
+        "session_id": "a4f4ed42-6a84-471f-8530-0eeb85c50088",
+        "lecturer_name": "Hoi dong thi",
+        "class_code": "EXAM_FINAL_CS",
+        "started_at": "2026-09-22T13:00:00+07:00",
+        "attendance_deadline": "2026-09-22T13:15:00+07:00",
+        "is_exam": true,
+        "checked_in_count": 35,
+        "enrolled_count": 35
+      },
+      "recent_events": [],
+      "environment_context": {
+        "source": "run_agent_demo.local_context",
+        "since": "2026-09-22T12:50:00+07:00",
+        "row_count": 2,
+        "readings": [
+          {
+            "environment_id": null,
+            "room_id": "153d9b4f-23dc-4cf9-827f-8f1ea8081e2b",
+            "temperature": 25.5,
+            "humidity": 55.0,
+            "smoke_detected": false,
+            "smoke_value": 0.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 680,
+            "air_quality": 84,
+            "room_mode": "EXAM",
+            "message_id": "demo-153d9b4f-23dc-4cf9-827f-8f1ea8081e2b-10",
+            "source_timestamp": "2026-09-22T12:55:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T12:55:00+07:00",
+            "environment_timestamp": "2026-09-22T12:55:00+07:00"
+          },
+          {
+            "environment_id": null,
+            "room_id": "153d9b4f-23dc-4cf9-827f-8f1ea8081e2b",
+            "temperature": 25.5,
+            "humidity": 55.0,
+            "smoke_detected": false,
+            "smoke_value": 0.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 680,
+            "air_quality": 84,
+            "room_mode": "EXAM",
+            "message_id": "demo-153d9b4f-23dc-4cf9-827f-8f1ea8081e2b-0",
+            "source_timestamp": "2026-09-22T13:05:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T13:05:00+07:00",
+            "environment_timestamp": "2026-09-22T13:05:00+07:00"
+          }
+        ]
+      }
+    }
+  },
+  "response": {
+    "event_id": "68013ae2-0ba1-4dd5-8ff7-ab920b9e0b60",
+    "recommendation": {
+      "tool_name": "send_alert",
+      "tool_params": {
+        "room_id": "153d9b4f-23dc-4cf9-827f-8f1ea8081e2b",
+        "level": "warning",
+        "message": "Cảnh báo an ninh phòng 153d9b4f-23dc-4cf9-827f-8f1ea8081e2b: thẻ RFID lạ, phòng ở chế độ EXAM"
+      },
+      "reason": "Rule: thẻ RFID lạ, phòng ở chế độ EXAM — báo bảo vệ/giảng viên trực.",
+      "confidence": 0.85,
+      "urgency": "medium"
+    },
+    "alternatives": [],
+    "analysis": "[FALLBACK: rules] AI/LLM không khả dụng, áp dụng quy tắc cứng. Rule: thẻ RFID lạ, phòng ở chế độ EXAM — báo bảo vệ/giảng viên trực. Đã loại ['trigger_buzzer'] do ma trận quyền chế độ EXAM.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": [],
+    "structured_trace": [],
+    "is_fallback": true,
+    "fallback_levels": [
+      "rules"
+    ],
+    "fallback_audit_log": [
+      {
+        "tool": "fallback",
+        "level": "rules",
+        "detail": "ConnectError: "
+      },
+      {
+        "_type": "fallback_audit",
+        "tool": "fallback",
+        "level": "rules",
+        "component": "agent",
+        "detail": "Chuyển sang rule fallback: ConnectError: ",
+        "ts": 1790601474.9657545
+      },
+      {
+        "_type": "fallback_audit",
+        "tool": "fallback",
+        "level": "rules",
+        "component": "rules",
+        "detail": "dùng rule-based cho event 'rfid_unknown': ConnectError: ",
+        "ts": 1790601474.965903
+      }
+    ]
+  },
+  "recorded_at": "2026-09-28T13:17:54.966775+00:00"
+}

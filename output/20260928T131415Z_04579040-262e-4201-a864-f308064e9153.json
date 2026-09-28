@@ -1,0 +1,183 @@
+{
+  "event": {
+    "event_id": "04579040-262e-4201-a864-f308064e9153",
+    "event_type": "temperature_anomaly",
+    "room_id": "99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af",
+    "timestamp": "2026-09-22T08:30:00+07:00",
+    "event_data": {
+      "temperature": 36.2,
+      "humidity": 71.0,
+      "co2": 1450,
+      "trigger": "threshold_exceeded",
+      "threshold": 34.0
+    },
+    "operational_context": {
+      "room": {
+        "room_id": "99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af",
+        "room_name": "Phòng A101",
+        "room_type": "lecture_hall",
+        "current_mode": "LECTURE",
+        "smoke_state": "normal"
+      },
+      "telemetry_summary": {
+        "window_start": "2026-09-22T08:00:00+07:00",
+        "window_end": "2026-09-22T08:30:00+07:00",
+        "temperature": {
+          "min": 28.5,
+          "max": 36.2,
+          "avg": 33.1,
+          "latest": 36.2
+        },
+        "humidity": {
+          "min": 60.0,
+          "max": 75.0,
+          "avg": 68.0,
+          "latest": 71.0
+        },
+        "co2": {
+          "min": 800.0,
+          "max": 1450.0,
+          "avg": 1100.0,
+          "latest": 1450.0
+        },
+        "smoke_value": {
+          "min": 0.0,
+          "max": 2.0,
+          "avg": 0.5,
+          "latest": 0.0
+        },
+        "air_quality": {
+          "min": 55.0,
+          "max": 80.0,
+          "avg": 65.0,
+          "latest": 58.0
+        }
+      },
+      "occupancy": {
+        "current_count": 38,
+        "total_in": 40,
+        "total_out": 2,
+        "trend": "stable"
+      },
+      "active_session": {
+        "session_id": "791d77ed-a967-49d6-9227-e40fdccb652e",
+        "lecturer_name": "TS. Nguyen Van A",
+        "class_code": "CS101",
+        "started_at": "2026-09-22T07:30:00+07:00",
+        "attendance_deadline": "2026-09-22T07:45:00+07:00",
+        "is_exam": false,
+        "checked_in_count": 38,
+        "enrolled_count": 40
+      },
+      "recent_events": [
+        {
+          "type": "temperature_anomaly",
+          "time": "2026-09-22T08:10:00+07:00",
+          "extra": {
+            "temperature": 34.5
+          }
+        }
+      ],
+      "environment_context": {
+        "source": "run_agent_demo.local_context",
+        "since": "2026-09-22T08:00:00+07:00",
+        "row_count": 2,
+        "readings": [
+          {
+            "environment_id": null,
+            "room_id": "99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af",
+            "temperature": 36.2,
+            "humidity": 71.0,
+            "smoke_detected": false,
+            "smoke_value": 0.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 1450,
+            "air_quality": 58,
+            "room_mode": "LECTURE",
+            "message_id": "demo-99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af-10",
+            "source_timestamp": "2026-09-22T08:20:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T08:20:00+07:00",
+            "environment_timestamp": "2026-09-22T08:20:00+07:00"
+          },
+          {
+            "environment_id": null,
+            "room_id": "99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af",
+            "temperature": 36.2,
+            "humidity": 71.0,
+            "smoke_detected": false,
+            "smoke_value": 0.0,
+            "smoke_threshold": 400.0,
+            "smoke_state": "normal",
+            "co2": 1450,
+            "air_quality": 58,
+            "room_mode": "LECTURE",
+            "message_id": "demo-99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af-0",
+            "source_timestamp": "2026-09-22T08:30:00+07:00",
+            "gateway_received_timestamp": "2026-09-22T08:30:00+07:00",
+            "environment_timestamp": "2026-09-22T08:30:00+07:00"
+          }
+        ]
+      }
+    }
+  },
+  "response": {
+    "event_id": "04579040-262e-4201-a864-f308064e9153",
+    "recommendation": {
+      "tool_name": "set_fan",
+      "tool_params": {
+        "room_id": "99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af",
+        "state": "on"
+      },
+      "reason": "Rule: môi trường vượt ngưỡng (temperature=36.2, co2=1450.0, occupancy=38) — bật quạt.",
+      "confidence": 0.8,
+      "urgency": "high"
+    },
+    "alternatives": [
+      {
+        "tool_name": "send_alert",
+        "tool_params": {
+          "room_id": "99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af",
+          "level": "warning",
+          "message": "Phòng 99b05dc4-8ec4-4f32-8c8d-2ea9d49f52af nóng/ngột ngạt (temperature=36.2, co2=1450.0, occupancy=38). Mở cửa sổ, kiểm tra điều hòa."
+        },
+        "reason": "Rule: nhắc kiểm tra thông gió (temperature=36.2, co2=1450.0, occupancy=38).",
+        "confidence": 0.75,
+        "urgency": "medium"
+      }
+    ],
+    "analysis": "[FALLBACK: rules] AI/LLM không khả dụng, áp dụng quy tắc cứng. Rule: môi trường vượt ngưỡng (temperature=36.2, co2=1450.0, occupancy=38) — bật quạt.",
+    "skip": false,
+    "skip_reason": null,
+    "tool_calls_log": [],
+    "structured_trace": [],
+    "is_fallback": true,
+    "fallback_levels": [
+      "rules"
+    ],
+    "fallback_audit_log": [
+      {
+        "tool": "fallback",
+        "level": "rules",
+        "detail": "ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+      },
+      {
+        "_type": "fallback_audit",
+        "tool": "fallback",
+        "level": "rules",
+        "component": "agent",
+        "detail": "Chuyển sang rule fallback: ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "ts": 1790601255.3754332
+      },
+      {
+        "_type": "fallback_audit",
+        "tool": "fallback",
+        "level": "rules",
+        "component": "rules",
+        "detail": "dùng rule-based cho event 'temperature_anomaly': ServerError: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}",
+        "ts": 1790601255.3756182
+      }
+    ]
+  },
+  "recorded_at": "2026-09-28T13:14:15.376568+00:00"
+}
