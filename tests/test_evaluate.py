@@ -182,10 +182,15 @@ class TestEvaluateAndAgent(unittest.IsolatedAsyncioTestCase):
         with patch.object(evaluate_module, "get_agent", return_value=custom_agent):
             response = await evaluate_event(payload)
 
-        # Safety check phải loại bỏ recommendation và đặt skip = True vì vi phạm mode EXAM
+        # Safety check Guard 2 sẽ từ chối set_door và yêu cầu LLM retry.
+        # LLM mock trả về default_mock_finish ở lượt tiếp theo.
         self.assertTrue(response.skip)
         self.assertIsNone(response.recommendation)
-        self.assertIn("final_safety_check_failed", response.skip_reason)
+        self.assertIn("default_mock_finish", response.skip_reason)
+        
+        # Kiểm tra Guard 2 đã thực sự block
+        blocked_step = next((step for step in response.structured_trace if step.reason_code == "PERMISSION_DENIED"), None)
+        self.assertIsNotNone(blocked_step, "Guard 2 permission check did not block the invalid tool")
 
     async def test_evaluate_event_validation_error(self):
         """Kiểm tra xử lý lỗi 422 khi payload truyền vào thiếu các trường bắt buộc."""

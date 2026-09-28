@@ -32,7 +32,7 @@ from app.agent.prompts import (
     required_rag_tools,
 )
 from app.config.settings import settings
-from app.gateway.llm_client import LLMClient
+from app.gateway.llm_client import GeminiLLMClient
 from app.schemas.context import OperationalContext
 from app.schemas.events import EventPayload, EventType
 from app.schemas.recommendation import AgentResponse
@@ -55,7 +55,10 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
     datefmt="%H:%M:%S",
+    encoding="utf-8",
 )
+logging.getLogger("google_genai.models").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.WARNING)  # Optionally silence httpx logs too for cleaner output
 logger = logging.getLogger("run_mock_scenarios")
 
 
@@ -152,7 +155,7 @@ def dry_run_scenario(scenario: dict) -> None:
 # ---------------------------------------------------------------------------
 # Run scenario thật với LLM
 # ---------------------------------------------------------------------------
-async def run_scenario(scenario: dict, llm: LLMClient) -> dict[str, Any]:
+async def run_scenario(scenario: dict, llm: GeminiLLMClient) -> dict[str, Any]:
     """Chạy Agent với 1 scenario, dùng mock RAG data."""
     event, context = build_from_scenario(scenario)
 
@@ -310,10 +313,10 @@ async def main() -> None:
     print("=" * 70)
 
     settings.USE_MOCK_RAG = True  # Force mock mode
-    llm = LLMClient()
+    llm = GeminiLLMClient()
 
     results = []
-    for i, scenario in enumerate(scenarios):
+    for i, scenario in enumerate(scenarios[:1]):
         if i > 0:
             logger.info("Nghỉ 5s giữa các scenarios...")
             await asyncio.sleep(5)

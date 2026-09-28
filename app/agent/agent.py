@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Awaitable, Callable, Protocol
+from typing import Any, Awaitable, Callable, Protocol
 
 from app.agent import prompts
 from app.agent.loop import ReActLoopRunner
@@ -41,7 +41,7 @@ from app.tools.registry import ACTION_TOOLS, FINISH_TOOL, RAG_TOOLS, is_tool_all
 logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLD = 0.5
-
+RagToolExecutor = Callable[[str, dict, OperationalContext], Awaitable[str]]
 
 class RagAdapter:
     def __init__(self, fn: RagToolExecutor, context: OperationalContext):
@@ -102,7 +102,6 @@ async def retrieve_past_experience(current_context_text: str, top_k: int = 3) ->
         return ""
 
 
-RagToolExecutor = Callable[[str, dict, OperationalContext], Awaitable[str]]
 
 
 class ReActXenAgent:
