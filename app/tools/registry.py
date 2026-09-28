@@ -155,14 +155,13 @@ def render_tool_desc(tools: list[ToolDefinition]) -> str:
 
 # Ma trận quyền hạn tool theo chế độ phòng (room_mode)
 MODE_PERMISSIONS: dict[str, set[str]] = {
-    # Nhóm sinh hoạt/hoạt động thường: Cho phép còi báo động để xử lý sự cố tức thời (khói, người lạ)
-    "SAVING": {"set_fan", "set_door", "set_mode", "send_alert", "set_led", "trigger_buzzer"},
-    "SELF_STUDY": {"set_fan", "set_door", "set_mode", "send_alert", "set_led", "trigger_buzzer"},
-    "LECTURE": {"set_fan", "set_door", "set_mode", "send_alert", "set_led", "trigger_buzzer"},
+    # Nhóm sinh hoạt/hoạt động thường: 
+    "SAVING": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
+    "SELF_STUDY": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
+    "LECTURE": {"set_fan", "set_door", "set_mode", "send_alert", "set_led"},
     
-    # Nhóm kiểm soát gắt gao: 
-    # Vẫn CẤM set_door để tránh Agent ảo giác tự mở cửa, nhưng PHẢI CẤP QUYỀN trigger_buzzer vì an toàn sinh mạng (cháy nổ) luôn ưu tiên hơn quy chế thi.
-    "EXAM": {"set_fan", "send_alert", "set_led", "set_mode", "trigger_buzzer"}, 
+    # Nhóm kiểm soát gắt gao (chỉ cho phép hành động kín đáo, tránh gây loạn):
+    "EXAM": {"set_fan", "send_alert", "set_led", "set_mode"}, 
     
     # Nhóm an ninh: Chỉ cảnh báo và quan sát, tuyệt đối không can thiệp vật lý (cửa/quạt) để giữ hiện trường
     "LOCK": {"send_alert", "trigger_buzzer", "set_mode"}, 
