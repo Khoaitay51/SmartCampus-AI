@@ -10,4 +10,4 @@ env/
 .vscode/
 .idea/
 *.log
-output/
+output/.env
