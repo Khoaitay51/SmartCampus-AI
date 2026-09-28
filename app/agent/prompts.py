@@ -691,6 +691,20 @@ Lưu ý:
   lý do (đúng trường hợp đặc biệt nào) trong 'analysis'.
 """
 
+# Thêm Context Caching để bắt "static context"(ko đổi theo event): SYSTEM_PROMPT, build_rag_catalog_prompt(), OUTPUT_FORMAT_INSTRUCTIONS
+from functools import lru_cache
+# ... [Các biến cấu hình tĩnh giữ nguyên] ...
+@lru_cache(maxsize=1)
+def build_static_prompt() -> str:
+    """Phần prompt KHÔNG đổi theo event_type — build 1 lần và cache thẳng vào RAM."""
+    return "\n".join(
+        [
+            SYSTEM_PROMPT,
+            build_rag_catalog_prompt(),
+            OUTPUT_FORMAT_INSTRUCTIONS,
+            f"## Ví dụ (Tiny Trajectory Store):\n{TTS_EXAMPLES}\n(HẾT VÍ DỤ)\n",
+        ]
+    )
 
 # ---------------------------------------------------------------------------
 # Composer — ghép các khối + few-shot + feedback + event context thành 1 prompt
