@@ -43,19 +43,18 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-    # Mở comment phần deploy bên dưới nếu máy tính của bạn có NVIDIA GPU
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     networks:
       - smartcampus-net
 
   # ---------------------------------------------------------------------------
-  # 3. Ollama Init Service (Tự động tải nomic-embed-text và Qwen SLM)
+  # 3. Ollama Init Service
   # ---------------------------------------------------------------------------
   ollama-init:
     image: ollama/ollama:latest
@@ -85,7 +84,7 @@ services:
     restart: "no"
 
   # ---------------------------------------------------------------------------
-  # 4. SmartCampus AI Agent Service (FastAPI + ReActXenAgent + RAG)
+  # 4. SmartCampus AI Agent Service
   # ---------------------------------------------------------------------------
   ai-agent:
     build:
@@ -97,7 +96,6 @@ services:
     env_file:
       - .env
     environment:
-      # Kết nối nội bộ container tới container db và ollama
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartcampus}:${POSTGRES_PASSWORD:-change-this-local-password}@db:5432/${POSTGRES_DB:-smartcampus}
       OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_EMBEDDING_MODEL: nomic-embed-text

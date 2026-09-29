@@ -101,7 +101,7 @@ SmartCampus-AI/
 
 ---
 
-## 🚀 4. HƯỚNG DẪN CÀI ĐẶT & CHẠY LOCAL DÀNH CHO BẠN BÈ / TEAM
+## 🚀 4. HƯỚNG DẪN CÀI ĐẶT & CHẠY LOCAL 
 
 ### Bước 1: Chuẩn Bị Môi Trường Python
 
@@ -171,22 +171,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```bash
 USE_MOCK_RAG=true python -m unittest discover tests
 ```
-*(Hiện tại 21/21 tests đều đã PASS 100%).*
 
 ---
 
-## ⚠️ 5. BA NGUYÊN TẮC CẦN NHỚ KHI PHÁT TRIỂN TIẾP (CRITICAL RULES)
-
-1. **Tuyệt đối KHÔNG sửa file `app/agent/prompts.py`**:
-   - Mọi quy định mới về phòng thi, cháy nổ, kiểm soát ra vào đều phải được viết thành file Markdown trong thư mục `campus_knowledge/` rồi nạp qua RAG, **không** nhồi trực tiếp vào System Prompt.
-2. **Bảo toàn chuẩn 7 RAG Tools**:
-   - Agent được ràng buộc chặt chẽ với đúng **7 công cụ RAG** (`RAG_TOOLS` trong `app/tools/registry.py`) và ngân sách tối đa 5 lượt gọi (`RagCallBudget`).
-   - Tuyệt đối không tự ý khai báo thêm tool mới (như `search_sop`) vì sẽ làm vỡ Unit Test và làm Agent phân tâm/cạn ngân sách gọi tool. Mọi nhu cầu tra cứu ngữ nghĩa đều được hợp nhất vào `search_history` và `get_room_history`.
-3. **Không làm nghẽn Event Loop của FastAPI**:
-   - Bất kỳ tác vụ CPU-bound nào (tính toán số liệu thống kê, nén tóm tắt, gọi model đồng bộ) trong background worker bắt buộc phải được bao bọc bằng `asyncio.to_thread`.
-
----
-
-## 📖 6. CÁC TÀI LIỆU CHI TIẾT ĐỂ ĐỌC THÊM
-- [SYSTEM_WALKTHROUGH.md](file:///home/user_kma_chinh/SmartCampus-AI/SYSTEM_WALKTHROUGH.md): Phân tích chi tiết toàn bộ kiến trúc ReAct, cơ chế Fallback, và mô hình dữ liệu.
-- [recent_changes_walkthrough.md](file:///home/user_kma_chinh/.gemini/antigravity-ide/brain/4d164a70-8e5b-4cf0-a953-be96174878ea/recent_changes_walkthrough.md): Nhật ký chi tiết toàn bộ các hạng mục cải tiến vừa thực hiện trong phiên làm việc này.
