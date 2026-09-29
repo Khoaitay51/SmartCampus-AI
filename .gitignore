@@ -13,3 +13,4 @@ env/
 output/.env
 output/*
 !output/.gitkeep
+*.db

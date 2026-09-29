@@ -25,13 +25,14 @@ class ToolDefinition:
 RAG_TOOLS: list[ToolDefinition] = [
     ToolDefinition(
         name="search_history",
-        description="Semantic search qua pgvector embeddings trên telemetry summaries lịch sử.",
+        description="Semantic search qua pgvector: Tra cứu quy trình chuẩn SOP trường học (PCCC, HVAC, quy chế thi, an ninh) và tiền lệ sự cố lịch sử.",
         parameters={
-            "query": "string (bắt buộc)",
+            "query": "string (bắt buộc - mô tả sự cố hoặc quy trình SOP cần tra cứu)",
             "room_id": "string (tùy chọn)",
             "time_range": "enum ['1h', '6h', '24h', '7d']",
         },
     ),
+
     ToolDefinition(
         name="get_telemetry",
         description="Query raw time-series data cho 1 metric cụ thể của 1 phòng.",
