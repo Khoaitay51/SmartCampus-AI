@@ -105,7 +105,7 @@ def _extract_facts(event: dict[str, Any]) -> Facts:
         event_type=str(event.get("event_type") or event.get("type") or ""),
         event_id=str(event.get("event_id") or event.get("id") or "unknown"),
         room_id=_get(event, "room_id", "payload.room_id", "operational_context.room.id", "operational_context.room_id"),
-        mode=str(_get(event, "operational_context.room.state", "operational_context.room.mode",
+        mode=str(_get(event, "operational_context.room.state", "operational_context.room.mode", "operational_context.room.current_mode",
                       "operational_context.fsm_state", "operational_context.current_state",
                       "payload.room_state", "room_state", default="")).upper(),
         smoke_state=(str(_get(event, "event_data.smoke_state", "payload.smoke_state", f"{tele}.smoke_state", f"{tsum}.smoke_state", default="")).lower() or None),

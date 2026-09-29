@@ -47,6 +47,9 @@ class ExecutionResult(BaseModel):
     mode: Mode
 
 
+from app.config.settings import settings
+
+
 class RecommendationsClient:
     def __init__(self, client: GatewayClient) -> None:
         self._client = client
@@ -104,44 +107,53 @@ class RecommendationsClient:
             body["pending_approval_id"] = pending_approval_id
         return body
 
-    async def post_recommendation(event_id: str,  agent_response: AgentResponse) -> dict:
+    async def post_recommendation(self, event_id: str, agent_response: AgentResponse) -> dict[str, Any]:
+        """Gửi recommendation cho Backend thông qua GatewayClient nội bộ."""
+        return await post_recommendation(event_id, agent_response, client=self._client)
 
-        # ep kieu du lieu noi bo thanh JSON chuan theo contract cua file AI_AGENT_INTEGRATIOn
-        payload = {
-            "event_id": event_id,
-            "recommendation": None,
-            "alternatives": [alt.model_dump() for alt in agent_response.alternatives] if agent_response.alternatives else [],
-            "analysis": agent_response.analysis,
-            "skip": agent_response.skip,
-            "skip_reason": agent_response.skip,
+
+async def post_recommendation(
+    event_id: str,
+    agent_response: AgentResponse,
+    client: GatewayClient | None = None,
+) -> dict[str, Any]:
+    """
+    Ép kiểu dữ liệu nội bộ thành JSON chuẩn theo contract và gửi lên Backend /ai/recommend.
+    Hỗ trợ gọi trực tiếp hoặc thông qua GatewayClient.
+    """
+    payload: dict[str, Any] = {
+        "event_id": str(event_id),
+        "recommendation": None,
+        "alternatives": [alt.model_dump() for alt in agent_response.alternatives] if agent_response.alternatives else [],
+        "analysis": agent_response.analysis,
+        "skip": agent_response.skip,
+        "skip_reason": agent_response.skip_reason,
+    }
+
+    if not agent_response.skip and agent_response.recommendation:
+        payload["recommendation"] = {
+            "tool_name": agent_response.recommendation.tool_name,
+            "tool_params": agent_response.recommendation.tool_params,
+            "reason": agent_response.recommendation.reason,
+            "confidence": agent_response.recommendation.confidence,
+            "urgency": agent_response.recommendation.urgency,
         }
 
-        if not agent_response.skip and agent_response.recommendation:
-            payload["recommendation"] = {
-                "tool_name": agent_response.recommendation.tool_name,
-                "tool_params": agent_response.recommendation.tool_params,
-                "reason": agent_response.recommendation.reason,
-                "confidence": agent_response.recommendation.confidence,
-                "urgency": agent_response.recommendation.urgency,
-            }
+    logger.info("Đang gửi recommendation cho event %s tới Backend.", event_id)
 
-        # Log payload de de dang debug audit trail
-        logger.info(f"Dang gui recommendation cho event {event_id} toi Backend.")
+    if client is not None:
+        return await client.post("/ai/recommend", json=payload)
 
-        # Giao tiếp với FastAPI Gateway qua HTTP POST
-        endpoint = f"{settings.GATEWAY_API_URL}/ai/recommend"
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(endpoint, json=payload, timeout=10.0)
-                response.raise_for_status()
-                
-                # Backend sẽ trả về trạng thái (VD: {"recommendation_id": "...", "status": "pending_approval"})
-                result = response.json()
-                logger.info(f"Backend phản hồi: {result['status']}")
-                return result
-                
-            except httpx.HTTPError as e:
-                logger.error(f"Lỗi khi gửi recommendation tới Gateway: {e}")
-                # Xử lý retry logic hoặc ghi log error tùy vào chiến lược safety của hệ thống
-                raise
+    base_url = (getattr(settings, "GATEWAY_API_URL", None) or "http://localhost:8000/api").rstrip("/")
+    endpoint = f"{base_url}/ai/recommend"
+
+    async with httpx.AsyncClient() as http_client:
+        try:
+            response = await http_client.post(endpoint, json=payload, timeout=10.0)
+            response.raise_for_status()
+            result = response.json()
+            logger.info("Backend phản hồi: %s", result.get("status"))
+            return result
+        except httpx.HTTPError as e:
+            logger.error("Lỗi khi gửi recommendation tới Gateway: %s", e)
+            raise

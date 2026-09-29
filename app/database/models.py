@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, JSON, String
+from sqlalchemy import Boolean, Column, Computed, DateTime, Float, Index, Integer, JSON, String, Text
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import declarative_base
 from pgvector.sqlalchemy import Vector
 
 from app.config.settings import settings
 
 Base = declarative_base()
+
 
 
 class AgentExperienceLog(Base):
@@ -70,3 +72,61 @@ class AgentDecisionLog(Base):
     is_fallback = Column(Boolean, nullable=False, default=False, index=True)
     fallback_levels = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class CampusKnowledgeDocument(Base):
+    __tablename__ = "campus_documents"
+    __table_args__ = (
+        Index("idx_campus_docs_tsv", "tsv", postgresql_using="gin"),
+        Index(
+            "idx_campus_docs_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        {"schema": "agent_memory"},
+    )
+
+    id = Column(String, primary_key=True)
+    doc_type = Column(String, nullable=False, index=True)  # vd: 'sop_smoke_fire', 'sop_hvac', 'sop_exam'
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+
+    embedding = Column(Vector(settings.EMBEDDING_DIM))
+
+    tsv = Column(
+        TSVECTOR,
+        Computed(
+            "to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(content, ''))",
+            persisted=True,
+        ),
+    )
+    metadata_ = Column("metadata", JSON, nullable=True, default=dict)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ContextualMemoryLog(Base):
+    __tablename__ = "contextual_memory_logs"
+    __table_args__ = (
+        Index(
+            "idx_context_mem_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index("idx_context_mem_room_period", "room_id", "period", "start_time"),
+        {"schema": "agent_memory"},
+    )
+
+    id = Column(String, primary_key=True)
+    room_id = Column(String, nullable=False, index=True)
+    period = Column(String, nullable=False, index=True)  # 'hourly', 'daily', 'weekly'
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    summary_text = Column(Text, nullable=False)
+    metrics_data = Column(JSON, nullable=True, default=dict)
+    embedding = Column(Vector(settings.EMBEDDING_DIM))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+

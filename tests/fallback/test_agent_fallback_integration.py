@@ -102,7 +102,7 @@ class AgentFallbackIntegrationTests(unittest.IsolatedAsyncioTestCase):
         unstructured_output = (
             "Thought: Secondary model output has invalid final_json format\n"
             "Action: finish\n"
-            'Action Input: {"tool_name": "set_fan", "confidence": 0.95, "urgency": "high", "reason": "Nhiệt độ quá nóng 36.2C"}'
+            'Action Input: {"tool_name": "set_fan", "confidence": 0.95, "urgency": "high", "ly_do": "Nhiệt độ quá nóng 36.2C"}'
         )
         secondary = ScriptedLLM(unstructured_output)
 

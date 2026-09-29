@@ -12,7 +12,7 @@ from app.fallback import build_default_fallback_llm, evaluate_with_fallback
 from app.gateway.client import GatewayClient
 from app.gateway.rag import execute_rag_tool
 from app.gateway.rooms import RoomsClient
-from app.llm.gemini import GeminiLLMClient
+from app.llm import GeminiLLMClient, OllamaLLMClient
 from app.logging.audit import save_audit_and_memory
 from app.schemas.context import EnvironmentContext, OperationalContext
 from app.schemas.events import EventPayload
@@ -28,11 +28,20 @@ EVALUATE_TIMEOUT_SECONDS = getattr(settings, "EVALUATE_TIMEOUT_SECONDS", 25)
 def get_agent(
     llm: Any | None = None,
     rag_executor: Any | None = None,
+    enforce_rag_guard: bool = False,
 ) -> ReActXenAgent:
     """Khởi tạo instance ReActXenAgent với LLM Client và RAG tool executor."""
+    if llm is None:
+        provider = getattr(settings, "LLM_PROVIDER", "gemini").lower()
+        if provider == "ollama":
+            llm = OllamaLLMClient()
+        else:
+            llm = build_default_fallback_llm(GeminiLLMClient)
+
     return ReActXenAgent(
-        llm=llm or build_default_fallback_llm(GeminiLLMClient),
+        llm=llm,
         execute_rag_tool=rag_executor or execute_rag_tool,
+        enforce_rag_guard=enforce_rag_guard,
     )
 
 

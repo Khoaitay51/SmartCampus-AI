@@ -6,10 +6,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 class SensorsStats(BaseModel):
-    min: float
-    max: float
-    avg: float
-    latest: float
+    min: float | None = None
+    max: float | None = None
+    avg: float | None = None
+    latest: float | None = None
 
 class RoomInfo(BaseModel):
     room_id: UUID

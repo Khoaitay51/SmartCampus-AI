@@ -6,7 +6,7 @@ from app.llm.gemini import GeminiLLMClient
 from .client import GatewayClient, GatewayError
 from .db import AgentStateDB, get_db
 from .rag import RagBudgetExceeded, RagCallBudget, RagClient, execute_rag_tool
-from .recommendations import ExecutionResult, RecommendationPayload, RecommendationsClient, ToolCall
+from .recommendations import ExecutionResult, RecommendationPayload, RecommendationsClient, ToolCall, post_recommendation
 from .rooms import RoomsClient
  
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "RecommendationPayload",
     "ExecutionResult",
     "ToolCall",
+    "post_recommendation",
     "LLMClient",
     "GeminiLLMClient",
     "AgentStateDB",
