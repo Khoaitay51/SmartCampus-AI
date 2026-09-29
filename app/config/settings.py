@@ -55,6 +55,18 @@ class Settings(BaseSettings):
     MAX_RAG_CALLS: int = Field(default=5, ge=0, description="Giới hạn cứng số lần gọi RAG tool / request")
     CONFIDENCE_THRESHOLD: float = Field(default=0.5, ge=0.0, le=1.0, description="Dưới ngưỡng này bắt buộc skip=true")
 
+    # JWT Authentication
+    SECRET_KEY: str = Field(default="smartcampus-super-secret-key-change-in-production", description="JWT signing secret key")
+    ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=480, ge=1, description="JWT token expiry in minutes")
+
+    # MQTT Broker (WebSocket bridge)
+    MQTT_BROKER_HOST: str = Field(default="localhost", description="MQTT broker hostname")
+    MQTT_BROKER_PORT: int = Field(default=1883, ge=1, description="MQTT broker port")
+    MQTT_USERNAME: str = Field(default="", description="MQTT username (optional)")
+    MQTT_PASSWORD: str = Field(default="", description="MQTT password (optional)")
+    MQTT_CLIENT_ID: str = Field(default="smartcampus-fastapi-bridge", description="MQTT client identifier")
+
     @field_validator("BACKEND_BASE_URL")
     @classmethod
     def base_url_no_trailing_slash(cls, v: str) -> str:

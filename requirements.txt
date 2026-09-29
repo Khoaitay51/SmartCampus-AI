@@ -9,3 +9,11 @@ httpx
 python-dotenv
 google-genai
 alembic
+# Auth & JWT
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt
+python-multipart
+email-validator
+# MQTT bridge
+aiomqtt

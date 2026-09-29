@@ -5,11 +5,17 @@
 -- 1. Bật extension pgvector để hỗ trợ lưu trữ và tìm kiếm vector tương đồng
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 2. Tạo schema agent_memory riêng biệt dành cho bộ nhớ ngữ cảnh và LTM của AI Agent
+-- 2. Tạo schemas
 CREATE SCHEMA IF NOT EXISTS agent_memory;
+CREATE SCHEMA IF NOT EXISTS campus;
 
 -- 3. Cấp quyền đầy đủ cho user ứng dụng
 GRANT ALL PRIVILEGES ON SCHEMA agent_memory TO smartcampus;
+GRANT ALL PRIVILEGES ON SCHEMA campus TO smartcampus;
+
+-- =============================================================================
+-- Agent Memory Tables (AI Service)
+-- =============================================================================
 
 -- 4. Bảng lưu trữ tri thức (RAG Knowledge Store) hỗ trợ Hybrid Search (FTS + pgvector)
 CREATE TABLE IF NOT EXISTS agent_memory.campus_documents (
@@ -23,11 +29,9 @@ CREATE TABLE IF NOT EXISTS agent_memory.campus_documents (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Chỉ mục Full-Text Search (GIN) cho Keyword Search
 CREATE INDEX IF NOT EXISTS idx_campus_docs_tsv
 ON agent_memory.campus_documents USING gin (tsv);
 
--- Chỉ mục Semantic Vector (HNSW Cosine) cho Vector Search
 CREATE INDEX IF NOT EXISTS idx_campus_docs_embedding
 ON agent_memory.campus_documents USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
@@ -36,7 +40,7 @@ WITH (m = 16, ef_construction = 64);
 CREATE TABLE IF NOT EXISTS agent_memory.contextual_memory_logs (
     id VARCHAR PRIMARY KEY,
     room_id VARCHAR(100) NOT NULL,
-    period VARCHAR(20) NOT NULL, -- 'hourly', 'daily', 'weekly'
+    period VARCHAR(20) NOT NULL,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
     summary_text TEXT NOT NULL,
@@ -52,7 +56,131 @@ WITH (m = 16, ef_construction = 64);
 CREATE INDEX IF NOT EXISTS idx_context_mem_room_period
 ON agent_memory.contextual_memory_logs (room_id, period, start_time DESC);
 
+-- =============================================================================
+-- Campus Tables (RBAC + BMS Management)
+-- =============================================================================
+
+-- 6. Users table (RBAC: admin, lecturer, student)
+CREATE TABLE IF NOT EXISTS campus.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255),
+    role VARCHAR(20) NOT NULL DEFAULT 'student' CHECK (role IN ('admin', 'lecturer', 'student')),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    avatar_url VARCHAR(512),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON campus.users (email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON campus.users (username);
+
+-- 7. RFID Cards
+CREATE TABLE IF NOT EXISTS campus.rfid_cards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    uid VARCHAR(50) UNIQUE NOT NULL,
+    user_id UUID REFERENCES campus.users(id) ON DELETE SET NULL,
+    is_registered BOOLEAN NOT NULL DEFAULT FALSE,
+    registered_at TIMESTAMPTZ,
+    last_scanned_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rfid_uid ON campus.rfid_cards (uid);
+
+-- 8. Rooms (FSM 7 states)
+CREATE TABLE IF NOT EXISTS campus.rooms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) UNIQUE NOT NULL,
+    building VARCHAR(100),
+    floor INTEGER,
+    capacity INTEGER DEFAULT 40,
+    mode VARCHAR(20) NOT NULL DEFAULT 'SAVING'
+        CHECK (mode IN ('SAVING','SELF_STUDY','LECTURE','EXAM','LOCK','SUSPECTED','EMERGENCY')),
+    previous_mode VARCHAR(20),
+    temperature FLOAT,
+    humidity FLOAT,
+    co2 FLOAT,
+    occupancy INTEGER NOT NULL DEFAULT 0,
+    door_locked BOOLEAN NOT NULL DEFAULT TRUE,
+    fan_on BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. Devices (ESP32 nodes)
+CREATE TABLE IF NOT EXISTS campus.devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    mac_address VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(100),
+    device_type VARCHAR(50) DEFAULT 'sensor_node',
+    firmware_version VARCHAR(50),
+    room_id UUID REFERENCES campus.rooms(id) ON DELETE SET NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'offline'
+        CHECK (status IN ('online','offline','provisioning')),
+    last_heartbeat TIMESTAMPTZ,
+    ip_address VARCHAR(50),
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_devices_mac ON campus.devices (mac_address);
+
+-- 10. Room Sessions
+CREATE TABLE IF NOT EXISTS campus.room_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id UUID NOT NULL REFERENCES campus.rooms(id) ON DELETE CASCADE,
+    lecturer_id UUID REFERENCES campus.users(id) ON DELETE SET NULL,
+    mode VARCHAR(20) NOT NULL DEFAULT 'LECTURE',
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    checkin_deadline TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_room_active ON campus.room_sessions (room_id, is_active);
+
+-- 11. Attendance Records
+CREATE TABLE IF NOT EXISTS campus.attendance_records (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id UUID NOT NULL REFERENCES campus.room_sessions(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES campus.users(id) ON DELETE CASCADE,
+    rfid_uid VARCHAR(50),
+    checked_in_at TIMESTAMPTZ DEFAULT NOW(),
+    is_late BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(20) NOT NULL DEFAULT 'present'
+);
+
+CREATE INDEX IF NOT EXISTS idx_attendance_session ON campus.attendance_records (session_id);
+
+-- 12. AI Recommendations (HITL)
+CREATE TABLE IF NOT EXISTS campus.ai_recommendations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id VARCHAR,
+    room_id UUID REFERENCES campus.rooms(id) ON DELETE SET NULL,
+    tool_name VARCHAR(100) NOT NULL,
+    tool_params JSONB NOT NULL DEFAULT '{}'::jsonb,
+    reason TEXT,
+    confidence FLOAT,
+    urgency VARCHAR(20) DEFAULT 'medium',
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    reviewed_by UUID REFERENCES campus.users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    review_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_recommendations_status ON campus.ai_recommendations (status);
+
+-- =============================================================================
+-- Grants
+-- =============================================================================
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA agent_memory TO smartcampus;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA agent_memory TO smartcampus;
-
-
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA campus TO smartcampus;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA campus TO smartcampus;
