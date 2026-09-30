@@ -23,7 +23,7 @@ from sqlalchemy import select
 from app.api.evaluate import get_agent
 from app.campus.models import AIRecommendation, Device, Room
 from app.config.settings import settings
-from app.database.session import get_async_db
+from app.database.session import get_db_context
 from app.logging.audit import save_audit_and_memory
 from app.schemas.context import (
     Occupancy,
@@ -103,7 +103,7 @@ async def _auto_sync_room_and_device(
         except (ValueError, TypeError):
             target_room_uuid = None
 
-    async with get_async_db() as db:
+    async with get_db_context() as db:
         try:
             # 1. Đồng bộ Room
             if target_room_uuid is not None:
@@ -224,7 +224,7 @@ async def _run_agent_task(
     co2_val = 450.0
     occ_val = 0
 
-    async with get_async_db() as db:
+    async with get_db_context() as db:
         r = await db.get(Room, room_uuid)
         if r:
             room_name = r.name
@@ -315,17 +315,18 @@ async def _run_agent_task(
 
     # Nếu có đề xuất điều khiển và không skip -> tạo AI Recommendation (HITL)
     if response.recommendation and not response.skip:
+        rec_params = getattr(response.recommendation, "tool_params", getattr(response.recommendation, "parameters", {}))
         rec_obj = AIRecommendation(
             event_id=str(event.event_id),
             room_id=room_uuid,
             tool_name=response.recommendation.tool_name,
-            tool_params=response.recommendation.parameters,
+            tool_params=rec_params,
             reason=response.recommendation.reason,
             confidence=response.recommendation.confidence,
             urgency=response.recommendation.urgency,
             status="pending",
         )
-        async with get_async_db() as db:
+        async with get_db_context() as db:
             db.add(rec_obj)
             await db.commit()
             await db.refresh(rec_obj)
@@ -338,7 +339,7 @@ async def _run_agent_task(
             "room_id": str(room_uuid),
             "room_name": room_name,
             "tool_name": response.recommendation.tool_name,
-            "tool_params": response.recommendation.parameters,
+            "tool_params": rec_params,
             "reason": response.recommendation.reason,
             "confidence": response.recommendation.confidence,
             "urgency": response.recommendation.urgency,

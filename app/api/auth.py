@@ -19,6 +19,7 @@ from app.auth.models import User
 from app.auth.schemas import (
     AuthRegisterResponse,
     TokenResponse,
+    UserLogin,
     UserResponse,
     UserSignUp,
 )
@@ -161,16 +162,15 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_async_db),
 ):
-    """Login bằng email + password, trả về JWT token.
-
-    Dùng OAuth2PasswordRequestForm để tương thích cả Swagger UI lẫn frontend.
-    Field 'username' của form nhận email (giống webdeb pattern).
-    """
-    result = await db.execute(select(User).where(User.email == form_data.username))
+    """Login bằng email/username + password (OAuth2 Form), trả về JWT token."""
+    identifier = form_data.username.strip()
+    result = await db.execute(
+        select(User).where((User.email == identifier) | (User.username == identifier))
+    )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Invalid email or password")
+        raise HTTPException(status_code=400, detail="Invalid email/username or password")
 
     if user.is_locked:
         raise HTTPException(status_code=403, detail="Account is locked. Please contact admin.")
@@ -180,6 +180,40 @@ async def login(
 
     access_token = create_access_token(
         data={
+            "sub": str(user.id),
+            "user_id": str(user.id),
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+        }
+    )
+    return TokenResponse(access_token=access_token, token_type="bearer")
+
+
+@router.post("/login/json", response_model=TokenResponse)
+async def login_json(
+    login_data: UserLogin,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Login bằng JSON payload (email hoặc username + password), trả về JWT token."""
+    identifier = login_data.email.strip()
+    result = await db.execute(
+        select(User).where((User.email == identifier) | (User.username == identifier))
+    )
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(login_data.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Invalid email/username or password")
+
+    if user.is_locked:
+        raise HTTPException(status_code=403, detail="Account is locked. Please contact admin.")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated.")
+
+    access_token = create_access_token(
+        data={
+            "sub": str(user.id),
             "user_id": str(user.id),
             "username": user.username,
             "email": user.email,

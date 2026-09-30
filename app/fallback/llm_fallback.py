@@ -97,7 +97,11 @@ class OllamaClient:
                     "system": system_prompt,
                     "prompt": _CONTENTS,
                     "stream": False,
-                    "options": {"temperature": self.temperature, "num_predict": self.max_tokens},
+                    "options": {
+                        "temperature": self.temperature,
+                        "num_predict": self.max_tokens,
+                        "num_ctx": int(os.getenv("OLLAMA_NUM_CTX", "16384")),
+                    },
                 },
             )
             resp.raise_for_status()
@@ -191,7 +195,7 @@ def build_default_fallback_llm(llm_client_cls: type, *, breaker_kwargs: dict[str
     primary = llm_client_cls()
     providers = [ProviderSpec("gemini-primary", primary, CircuitBreaker("gemini-primary", **bk), timeout=30.0)]
 
-    secondary_model = _setting("FALLBACK_LLM_MODEL", "gemini-2.5-flash-lite")
+    secondary_model = _setting("FALLBACK_LLM_MODEL", "gemini-3.5-flash-lite")
     providers.append(ProviderSpec(
         "gemini-secondary", llm_client_cls(model=secondary_model),
         CircuitBreaker("gemini-secondary", **bk), timeout=30.0, prompt_adapter=adapt_prompt_for_small_model,

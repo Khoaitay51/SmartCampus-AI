@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = Field(default="qwen2:1.5b", description="Model SLM cho Ollama (vd: qwen2:1.5b, qwen2:0.5b)")
     OLLAMA_EMBEDDING_MODEL: str = Field(default="nomic-embed-text", description="Model embedding chạy trên Ollama")
     OLLAMA_FALLBACK_MODEL: str = Field(default="qwen2:1.5b", description="Model SLM Ollama dùng khi fallback")
+    OLLAMA_NUM_CTX: int = Field(default=16384, description="Context window size cho Ollama")
 
     # db.py (PostgreSQL với pgvector)
     DATABASE_URL: str = Field(

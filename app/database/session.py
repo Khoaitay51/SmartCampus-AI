@@ -10,10 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.config.settings import settings
 from app.database.models import Base
 
-# Import campus + auth models so Base.metadata.create_all picks them up
-import app.auth.models  # noqa: F401
-import app.campus.models  # noqa: F401
-
 logger = logging.getLogger(__name__)
 
 async_engine = create_async_engine(
@@ -35,6 +31,10 @@ async_session = async_sessionmaker(
 async def init_db() -> None:
     """Initialize database schema and extension for agent_memory + campus."""
     try:
+        # Import campus + auth models so Base.metadata.create_all picks them up
+        import app.auth.models  # noqa: F401
+        import app.campus.models  # noqa: F401
+
         async with async_engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS agent_memory;"))
@@ -60,9 +60,19 @@ async def init_db() -> None:
         logger.warning("Could not initialize database schemas: %s", e)
 
 
-@asynccontextmanager
 async def get_async_db() -> AsyncIterator[AsyncSession]:
-    """Dependency helper for acquiring AsyncSession."""
+    """Dependency helper for acquiring AsyncSession in FastAPI endpoints."""
+    async with async_session() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+
+
+@asynccontextmanager
+async def get_db_context() -> AsyncIterator[AsyncSession]:
+    """Async context manager helper for background tasks and workers."""
     async with async_session() as session:
         try:
             yield session

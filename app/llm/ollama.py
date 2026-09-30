@@ -33,7 +33,8 @@ class OllamaLLMClient(LLMClient):
         model: str | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
-        timeout: float = 120.0,
+        num_ctx: int | None = None,
+        timeout: float = 180.0,
     ) -> None:
         self.base_url = (
             base_url or _cfg("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -49,6 +50,11 @@ class OllamaLLMClient(LLMClient):
             if max_tokens is not None
             else _cfg("AGENT_LLM_MAX_TOKENS", 2048)
         )
+        self.num_ctx = (
+            num_ctx
+            if num_ctx is not None
+            else _cfg("OLLAMA_NUM_CTX", 16384)
+        )
         self.timeout = timeout
         self.stop_sequences = ["Observation:", "\nObservation:"]
 
@@ -58,11 +64,12 @@ class OllamaLLMClient(LLMClient):
         payload = {
             "model": self.model,
             "system": system_prompt,
-            "prompt": "Hãy thực hiện bước tiếp theo theo đúng định dạng được yêu cầu.",
+            "prompt": "Hãy thực hiện ngay bước tiếp theo. Bắt đầu bằng định dạng:\nThought: [suy nghĩ của bạn]\nAction: [tên tool]\nAction Input: {...}",
             "stream": False,
             "options": {
                 "temperature": self.temperature,
                 "num_predict": self.max_tokens,
+                "num_ctx": self.num_ctx,
                 "stop": self.stop_sequences,
             },
         }
