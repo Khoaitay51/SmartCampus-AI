@@ -178,9 +178,48 @@ CREATE TABLE IF NOT EXISTS campus.ai_recommendations (
 CREATE INDEX IF NOT EXISTS idx_recommendations_status ON campus.ai_recommendations (status);
 
 -- =============================================================================
+-- Canonical Deterministic Seed Data (FR-DM-02, Sync with Edge & ESP32)
+-- =============================================================================
+-- 13. Pre-seed default room (Phòng 402) & Corridor
+INSERT INTO campus.rooms (id, name, building, floor, capacity, mode, temperature, humidity, co2, occupancy, door_locked, fan_on)
+VALUES 
+    ('11111111-1111-1111-1111-111111111111', 'Phong Hoc Thong Minh 402', 'A', 4, 40, 'SAVING', 26.5, 60.0, 450.0, 0, TRUE, FALSE),
+    ('11111111-1111-1111-1111-111111111110', 'Hanh Lang Tang 4', 'A', 4, 100, 'SAVING', 27.0, 62.0, 420.0, 0, FALSE, FALSE)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    building = EXCLUDED.building,
+    floor = EXCLUDED.floor;
+
+-- 14. Pre-seed Users (Admin, Lecturer, Students)
+INSERT INTO campus.users (id, username, email, hashed_password, full_name, role, is_active)
+VALUES
+    ('55555555-5555-5555-5555-555555555555', 'admin_quantri', 'admin@smartcampus.edu.vn', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQmG6W5650n6.b68.7t/m', 'Quan Tri Vien', 'admin', TRUE),
+    ('22222222-2222-2222-2222-222222222222', 'gv_nguyenvana', 'nguyenvana@smartcampus.edu.vn', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQmG6W5650n6.b68.7t/m', 'TS. Nguyen Van A', 'lecturer', TRUE),
+    ('33333333-3333-3333-3333-333333333333', 'sv_tranthib', 'tranthib@smartcampus.edu.vn', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQmG6W5650n6.b68.7t/m', 'Tran Thi B (SV 1)', 'student', TRUE),
+    ('44444444-4444-4444-4444-444444444444', 'sv_lequangc', 'lequangc@smartcampus.edu.vn', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQmG6W5650n6.b68.7t/m', 'Le Quang C (SV 2)', 'student', TRUE)
+ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    full_name = EXCLUDED.full_name;
+
+-- 15. Pre-seed RFID Cards
+INSERT INTO campus.rfid_cards (uid, user_id, is_registered, registered_at)
+VALUES
+    ('CARD_ADMIN', '55555555-5555-5555-5555-555555555555', TRUE, NOW()),
+    ('CARD_GV_01', '22222222-2222-2222-2222-222222222222', TRUE, NOW()),
+    ('CARD_SV_01', '33333333-3333-3333-3333-333333333333', TRUE, NOW()),
+    ('CARD_SV_02', '44444444-4444-4444-4444-444444444444', TRUE, NOW()),
+    ('1A2B3C4D', '22222222-2222-2222-2222-222222222222', TRUE, NOW()),
+    ('A1B2C3D4', '33333333-3333-3333-3333-333333333333', TRUE, NOW()),
+    ('5E6F7A8B', '44444444-4444-4444-4444-444444444444', TRUE, NOW())
+ON CONFLICT (uid) DO UPDATE SET
+    user_id = EXCLUDED.user_id,
+    is_registered = TRUE;
+
+-- =============================================================================
 -- Grants
 -- =============================================================================
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA agent_memory TO smartcampus;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA agent_memory TO smartcampus;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA campus TO smartcampus;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA campus TO smartcampus;
+
