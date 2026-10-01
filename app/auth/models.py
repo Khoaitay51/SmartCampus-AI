@@ -62,3 +62,24 @@ class RFIDCard(Base):
 
     # Relationships
     user = relationship("User", back_populates="rfid_cards")
+
+
+class CardRegistrationRequest(Base):
+    """Bảng card_registration_requests — Lưu các yêu cầu duyệt thẻ RFID quét tại Corridor Node."""
+    __tablename__ = "card_registration_requests"
+    __table_args__ = {"schema": "campus"}
+
+    request_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    card_uid = Column(String(50), nullable=False, index=True)
+    device_id = Column(UUID(as_uuid=True), nullable=True)
+    room_id = Column(UUID(as_uuid=True), nullable=True)
+    mac_address = Column(String(50), nullable=True, index=True)
+    status = Column(String(20), nullable=False, default="pending", index=True)  # pending, approved, rejected
+    assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("campus.users.id"), nullable=True)
+    assigned_user_name = Column(String(255), nullable=True)
+    note = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc), nullable=True)
+    processed_by = Column(UUID(as_uuid=True), ForeignKey("campus.users.id"), nullable=True)
+
+    user = relationship("User", foreign_keys=[assigned_user_id])

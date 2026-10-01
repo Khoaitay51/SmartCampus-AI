@@ -28,7 +28,7 @@ from app.database.session import get_async_db
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 
 # ---------------------------------------------------------------------------

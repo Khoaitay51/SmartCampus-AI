@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_active_user, require_role
 from app.auth.models import User
 from app.campus.models import AIRecommendation
-from app.campus.schemas import RecommendationAction, RecommendationResponse
+from app.campus.schemas import HitlToggleRequest, RecommendationAction, RecommendationResponse
 from app.database.session import get_async_db
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,42 @@ async def get_recommendation(
     return rec
 
 
+@router.get("/hitl/status")
+async def get_hitl_status():
+    """Lấy trạng thái cấu hình HITL hiện tại (True = Bắt buộc duyệt tay; False = Auto-pilot)."""
+    from app.campus.hitl import is_hitl_enabled
+    return {"hitl_enabled": is_hitl_enabled()}
+
+
+@router.post("/hitl/toggle")
+async def toggle_hitl(
+    payload: HitlToggleRequest | None = None,
+    _user: User = Depends(require_role("admin")),
+):
+    """Admin bật hoặc tắt chế độ Human-in-the-Loop.
+    
+    Nếu không truyền enabled, tự động đảo ngược trạng thái (toggle).
+    """
+    from app.campus.hitl import is_hitl_enabled, set_hitl_enabled
+    from app.websocket.manager import ws_manager
+
+    req_enabled = payload.enabled if payload else None
+    new_state = (not is_hitl_enabled()) if req_enabled is None else bool(req_enabled)
+    set_hitl_enabled(new_state)
+
+    # Thông báo realtime tới toàn bộ giao diện DTwin
+    await ws_manager.broadcast({
+        "type": "hitl_status_changed",
+        "hitl_enabled": new_state,
+        "changed_by": _user.username,
+    })
+
+    return {
+        "hitl_enabled": new_state,
+        "message": f"Chế độ HITL đã {'BẬT (Phê duyệt thủ công)' if new_state else 'TẮT (AI Tự động thực thi)'}",
+    }
+
+
 @router.post("/{rec_id}/execute", response_model=RecommendationResponse)
 async def execute_recommendation(
     rec_id: UUID,
@@ -93,9 +129,9 @@ async def execute_recommendation(
 ):
     """Admin/Lecturer: approve hoặc reject AI recommendation (HITL).
 
-    FR-AI-05: Mọi tool execution cần user confirm trên DTwin.
-    Sau khi approve, WebSocket manager sẽ broadcast kết quả
-    về MQTT để actuator thực thi.
+    FR-AI-05: Mọi tool execution cần user confirm trên DTwin khi HITL bật.
+    Sau khi approve, hệ thống sẽ gửi lệnh thực thi xuống Edge Gateway
+    và thiết bị phần cứng qua MQTT.
     """
     rec = await db.get(AIRecommendation, rec_id)
     if not rec:
@@ -114,20 +150,27 @@ async def execute_recommendation(
     await db.commit()
     await db.refresh(rec)
 
+    exec_result = None
     if rec.status == "approved":
-        # Broadcast approved recommendation via WebSocket → MQTT
-        from app.websocket.manager import ws_manager
-        await ws_manager.broadcast({
-            "type": "recommendation_executed",
-            "recommendation_id": str(rec.id),
-            "tool_name": rec.tool_name,
-            "tool_params": rec.tool_params,
-            "room_id": str(rec.room_id) if rec.room_id else None,
-            "approved_by": current_user.username,
-        })
+        from app.campus.hitl import dispatch_tool_execution
+        # Thực thi lệnh trực tiếp sang Edge Gateway và phần cứng
+        exec_result = await dispatch_tool_execution(
+            rec_id=rec.id,
+            room_id=rec.room_id,
+            tool_name=rec.tool_name,
+            tool_params=rec.tool_params,
+            reason=rec.reason or "",
+            operator=current_user.username,
+            is_auto=False,
+        )
 
     logger.info(
         "Recommendation %s %s by %s",
         rec_id, rec.status, current_user.username,
     )
-    return rec
+    
+    resp_obj = RecommendationResponse.model_validate(rec)
+    if exec_result:
+        resp_obj.execution_result = exec_result
+    return resp_obj
+

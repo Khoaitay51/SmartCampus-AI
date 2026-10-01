@@ -130,6 +130,7 @@ class RecommendationResponse(BaseModel):
     reviewed_at: Optional[datetime] = None
     review_notes: Optional[str] = None
     created_at: datetime
+    execution_result: Optional[dict[str, Any]] = None
 
     model_config = {"from_attributes": True}
 
@@ -138,3 +139,8 @@ class RecommendationAction(BaseModel):
     """HITL approve/reject action."""
     action: str = Field(..., description="'approve' or 'reject'")
     notes: Optional[str] = None
+
+
+class HitlToggleRequest(BaseModel):
+    """Request model cho endpoint toggle HITL."""
+    enabled: Optional[bool] = None

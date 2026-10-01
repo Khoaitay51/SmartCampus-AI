@@ -7,10 +7,12 @@ Tham khảo pattern từ webdeb auth/schema.py, mở rộng cho SmartCampus.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
 
 
 # ---------------------------------------------------------------------------
@@ -124,3 +126,40 @@ class RFIDCardResponse(BaseModel):
     role: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class CardRegistrationRequestResponse(BaseModel):
+    """Response cho bản ghi yêu cầu duyệt thẻ từ Corridor Node."""
+    request_id: UUID
+    card_uid: str
+    mac_address: Optional[str] = None
+    room_id: Optional[UUID] = None
+    status: str
+    assigned_user_id: Optional[UUID] = None
+    assigned_user_name: Optional[str] = None
+    note: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class CardApproveRequest(BaseModel):
+    """Request phê duyệt gán thẻ RFID cho user/sinh viên."""
+    user_id: Optional[UUID] = None
+    full_name: Optional[str] = None
+    username: Optional[str] = None
+    role: Optional[str] = "student"
+
+
+class CardRejectRequest(BaseModel):
+    """Request từ chối duyệt thẻ RFID."""
+    reason: Optional[str] = None
+
+
+class CardSimulateRequest(BaseModel):
+    """Request mô phỏng quẹt thẻ lạ tại Corridor Node."""
+    card_uid: Optional[str] = None
+    mac_address: Optional[str] = "24:6F:28:AA:BB:CC"
+    room_id: Optional[str] = None
+

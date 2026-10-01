@@ -137,15 +137,16 @@ async def _handle_client_message(
                 await ws_manager.broadcast(result)
 
                 if rec.status == "approved":
-                    # Also broadcast execution command
-                    await ws_manager.broadcast({
-                        "type": "recommendation_executed",
-                        "recommendation_id": rec_id,
-                        "tool_name": rec.tool_name,
-                        "tool_params": rec.tool_params,
-                        "room_id": str(rec.room_id) if rec.room_id else None,
-                        "approved_by": user_data.get("username"),
-                    })
+                    from app.campus.hitl import dispatch_tool_execution
+                    await dispatch_tool_execution(
+                        rec_id=rec.id,
+                        room_id=rec.room_id,
+                        tool_name=rec.tool_name,
+                        tool_params=rec.tool_params,
+                        reason=rec.reason or "",
+                        operator=user_data.get("username", "admin"),
+                        is_auto=False,
+                    )
 
         except Exception as e:
             logger.error("Failed to execute recommendation via WS: %s", e)

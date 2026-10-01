@@ -19,6 +19,11 @@ from app.api import campus_rooms as rooms_router
 from app.api import rfid as rfid_router
 from app.api import sessions as sessions_router
 from app.api import recommendations as recommendations_router
+from app.api import chat as chat_router
+from app.api import audit as audit_router
+from app.api import system as system_router
+from app.api import telemetry as telemetry_router
+from app.api import events as events_router
 from app.websocket.router import router as ws_router
 from app.database.session import init_db
 from app.logging.observability import setup_observability
@@ -85,6 +90,11 @@ app.include_router(rooms_router.router)
 app.include_router(rfid_router.router)
 app.include_router(sessions_router.router)
 app.include_router(recommendations_router.router)
+app.include_router(chat_router.router)
+app.include_router(audit_router.router)
+app.include_router(system_router.router)
+app.include_router(telemetry_router.router)
+app.include_router(events_router.router)
 
 # ---------------------------------------------------------------------------
 # WebSocket MQTT Tunnel

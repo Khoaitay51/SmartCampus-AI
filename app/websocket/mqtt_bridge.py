@@ -56,10 +56,38 @@ MQTT_TOPICS = [
     "smartcampus/v1/ack/device/+/command/+",
     # AI recommendations
     "smartcampus/v1/ai/recommendation",
+    # RFID Card Registration (Corridor Node FR-RF-01)
+    "smartcampus/v1/card/registration/#",
 ]
 
 # Debounce cache cho việc gọi Agent theo room và event type (giới hạn 30s giữa các lần gọi)
 _AGENT_COOLDOWN: dict[str, float] = {}
+_global_mqtt_client: Any | None = None
+
+
+async def publish_mqtt_message(topic: str, payload: dict[str, Any]) -> bool:
+    """Publish MQTT message to Mosquitto broker (used for card registration responses or simulations)."""
+    global _global_mqtt_client
+    try:
+        payload_bytes = json.dumps(payload).encode("utf-8")
+        if _global_mqtt_client is not None:
+            await _global_mqtt_client.publish(topic, payload_bytes)
+            logger.info("Published MQTT to %s via active bridge: %s", topic, payload)
+            return True
+        import aiomqtt
+        async with aiomqtt.Client(
+            hostname=settings.MQTT_BROKER_HOST,
+            port=settings.MQTT_BROKER_PORT,
+            username=settings.MQTT_USERNAME or None,
+            password=settings.MQTT_PASSWORD or None,
+            identifier=f"{settings.MQTT_CLIENT_ID}-pub-{uuid.uuid4().hex[:6]}",
+        ) as pub_client:
+            await pub_client.publish(topic, payload_bytes)
+            logger.info("Published MQTT to %s via ad-hoc client: %s", topic, payload)
+            return True
+    except Exception as e:
+        logger.error("Failed to publish MQTT message to %s: %s", topic, e)
+        return False
 
 
 def _parse_room_id_from_topic(topic: str) -> str | None:
@@ -313,9 +341,14 @@ async def _run_agent_task(
     except Exception as e:
         logger.warning("Lưu audit/memory thất bại: %s", e)
 
-    # Nếu có đề xuất điều khiển và không skip -> tạo AI Recommendation (HITL)
+    # Nếu có đề xuất điều khiển và không skip -> tạo AI Recommendation (HITL hoặc Autopilot)
     if response.recommendation and not response.skip:
+        from app.campus.hitl import is_hitl_enabled, dispatch_tool_execution
         rec_params = getattr(response.recommendation, "tool_params", getattr(response.recommendation, "parameters", {}))
+        
+        hitl_active = is_hitl_enabled()
+        status_init = "pending" if hitl_active else "auto_approved"
+
         rec_obj = AIRecommendation(
             event_id=str(event.event_id),
             room_id=room_uuid,
@@ -324,7 +357,9 @@ async def _run_agent_task(
             reason=response.recommendation.reason,
             confidence=response.recommendation.confidence,
             urgency=response.recommendation.urgency,
-            status="pending",
+            status=status_init,
+            review_notes="Tự động phê duyệt và thực thi qua chế độ Autopilot" if not hitl_active else None,
+            reviewed_at=datetime.now(timezone.utc) if not hitl_active else None,
         )
         async with get_db_context() as db:
             db.add(rec_obj)
@@ -334,6 +369,7 @@ async def _run_agent_task(
 
         rec_data = {
             "type": "ai_recommendation",
+            "id": rec_id_str,
             "recommendation_id": rec_id_str,
             "event_id": str(event.event_id),
             "room_id": str(room_uuid),
@@ -345,11 +381,13 @@ async def _run_agent_task(
             "urgency": response.recommendation.urgency,
             "analysis": response.analysis,
             "is_fallback": response.is_fallback,
-            "requires_confirmation": True,
+            "requires_confirmation": hitl_active,
+            "hitl_enabled": hitl_active,
+            "auto_executed": not hitl_active,
             "edge_rest_endpoint": "http://localhost:8000/api/commands/room/execute",
         }
 
-        # Broadcast WebSocket tới Digital Twin UI (hiển thị popup HITL)
+        # Broadcast WebSocket tới Digital Twin UI (hiển thị popup HITL hoặc thông báo Auto-pilot)
         await ws_manager.broadcast(rec_data)
 
         # Publish MQTT topic smartcampus/v1/ai/recommendation
@@ -359,6 +397,20 @@ async def _run_agent_task(
                 logger.info("Đã publish AI recommendation lên MQTT: %s", rec_id_str)
             except Exception as pe:
                 logger.warning("Không thể publish AI recommendation lên MQTT: %s", pe)
+
+        # Nếu chế độ HITL tắt -> Tự động thực thi lệnh ngay lập tức!
+        if not hitl_active:
+            logger.info("⚡ [AUTOPILOT] HITL đang tắt. Tự động thực thi tool '%s' xuống Edge Gateway...", response.recommendation.tool_name)
+            await dispatch_tool_execution(
+                rec_id=rec_id_str,
+                room_id=room_uuid,
+                tool_name=response.recommendation.tool_name,
+                tool_params=rec_params,
+                reason=response.recommendation.reason or "Auto-pilot execution without manual approval",
+                operator="AI_AUTOPILOT",
+                is_auto=True,
+            )
+
 
 
 async def _trigger_agent_from_notable_event(
@@ -496,9 +548,56 @@ async def _handle_mqtt_message(
     # 11. Đề xuất điều khiển từ AI Agent
     elif "ai/recommendation" in topic:
         ws_message["type"] = "ai_recommendation"
+        rec_id = inner.get("id") or inner.get("recommendation_id") if isinstance(inner, dict) else None
+        if rec_id:
+            ws_message["id"] = rec_id
+            ws_message["recommendation_id"] = rec_id
         ws_message["urgency"] = inner.get("urgency", "medium") if isinstance(inner, dict) else "medium"
         await ws_manager.send_to_role("admin", ws_message)
         await ws_manager.send_to_role("lecturer", ws_message)
+
+    # 12. Quét & Đăng ký thẻ RFID tại Node Hành lang (Corridor Node FR-RF-01)
+    elif "/card/registration/request" in topic:
+        ws_message["type"] = "card_registration_request"
+        ws_message["urgency"] = "medium"
+        card_uid = inner.get("card_uid") if isinstance(inner, dict) else None
+        mac_address = inner.get("mac_address") if isinstance(inner, dict) else None
+        note = inner.get("note", "Quét tại Node Hành lang (Corridor Node)") if isinstance(inner, dict) else "Quét tại Node Hành lang"
+
+        if card_uid:
+            try:
+                from app.auth.models import CardRegistrationRequest
+                async with get_db_context() as db:
+                    res = await db.execute(
+                        select(CardRegistrationRequest).where(
+                            CardRegistrationRequest.card_uid == card_uid,
+                            CardRegistrationRequest.status == "pending",
+                        ).limit(1)
+                    )
+                    existing = res.scalar_one_or_none()
+                    if not existing:
+                        new_req = CardRegistrationRequest(
+                            card_uid=card_uid,
+                            mac_address=mac_address,
+                            status="pending",
+                            note=note,
+                        )
+                        db.add(new_req)
+                        await db.commit()
+                        await db.refresh(new_req)
+                        if isinstance(inner, dict):
+                            inner["request_id"] = str(new_req.request_id)
+                    else:
+                        if isinstance(inner, dict):
+                            inner["request_id"] = str(existing.request_id)
+            except Exception as e:
+                logger.error("Lỗi khi lưu CardRegistrationRequest: %s", e)
+
+        await ws_manager.broadcast(ws_message)
+
+    elif "/card/registration/response" in topic:
+        ws_message["type"] = "card_registration_response"
+        await ws_manager.broadcast(ws_message)
 
     else:
         # Generic message
@@ -512,6 +611,7 @@ async def mqtt_bridge_worker() -> None:
     Sử dụng aiomqtt (async MQTT client) để subscribe và forward.
     Auto-reconnect nếu bị disconnect.
     """
+    global _global_mqtt_client
     try:
         import aiomqtt
     except ImportError:
@@ -537,6 +637,7 @@ async def mqtt_bridge_worker() -> None:
                 password=settings.MQTT_PASSWORD or None,
                 identifier=settings.MQTT_CLIENT_ID,
             ) as client:
+                _global_mqtt_client = client
                 # Subscribe tất cả campus topics
                 for topic in MQTT_TOPICS:
                     await client.subscribe(topic)
@@ -545,21 +646,25 @@ async def mqtt_bridge_worker() -> None:
                 logger.info("MQTT bridge connected and listening")
 
                 # Listen loop
-                async for message in client.messages:
-                    try:
-                        topic_str = str(message.topic)
-                        payload_str = message.payload.decode("utf-8") if isinstance(message.payload, bytes) else str(message.payload)
-
+                try:
+                    async for message in client.messages:
                         try:
-                            payload = json.loads(payload_str)
-                        except json.JSONDecodeError:
-                            payload = {"raw": payload_str}
+                            topic_str = str(message.topic)
+                            payload_str = message.payload.decode("utf-8") if isinstance(message.payload, bytes) else str(message.payload)
 
-                        logger.debug("MQTT message: topic=%s payload=%s", topic_str, payload)
-                        await _handle_mqtt_message(topic_str, payload, client=client)
+                            try:
+                                payload = json.loads(payload_str)
+                            except json.JSONDecodeError:
+                                payload = {"raw": payload_str}
 
-                    except Exception as e:
-                        logger.error("Error processing MQTT message: %s", e)
+                            logger.debug("MQTT message: topic=%s payload=%s", topic_str, payload)
+                            await _handle_mqtt_message(topic_str, payload, client=client)
+
+                        except Exception as e:
+                            logger.error("Error processing MQTT message: %s", e)
+                finally:
+                    _global_mqtt_client = None
+
 
         except asyncio.CancelledError:
             logger.info("MQTT bridge worker cancelled")
