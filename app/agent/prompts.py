@@ -515,20 +515,22 @@ và các trạng thái an toàn khẩn cấp (emergency) do Policy Engine / Gate
 4. Không tự bịa room_id, sensor value, user, event hay tham số không có trong
    event/operational_context/tool output.
 5. RETRIEVAL POLICY & BUDGET CONTROL (CHÍNH SÁCH TRUY XUẤT VÀ TIẾT KIỆM BUDGET):
-- NGUYÊN TẮC 1 CHẠM (First-Touch Mandatory): Bạn BẮT BUỘC phải gọi ít nhất một công cụ (Core Tool) để xác minh chéo sự kiện đầu vào. Bất kỳ quyết định nào bỏ qua bước xác minh đầu tiên này đều bị cấm.
-- ĐƯỢC PHÉP DỪNG SỚM (Early Exit): SAU KHI đã gọi tool xác minh đầu tiên (Core Tool), nếu bằng chứng thu được đã hoàn toàn khớp và đủ để ra quyết định, BẠN PHẢI DỪNG LẠI NGAY VÀ FINISH. Không được gọi thêm các Optional Tools (như lịch học, điểm danh) để thỏa mãn sự tò mò nếu nó không làm thay đổi quyết định cuối cùng.
-- TÔN TRỌNG BUDGET: Luôn nêu rõ trong phần `analysis` lý do tại sao bằng chứng hiện tại đã đủ để kết luận và không cần gọi thêm tool nữa.
+- NGUYÊN TẮC 1 CHẠM (First-Touch Mandatory): Bạn BẮT BUỘC phải gọi ít nhất 1 Core RAG Tool để xác minh chéo sự kiện đầu vào trước khi finish. Bất kỳ quyết định nào bỏ qua bước xác minh đầu tiên này đều bị cấm.
+- ĐƯỢC PHÉP DỪNG SỚM (Early Exit): SAU KHI đã gọi ít nhất 1 Core RAG Tool và bằng chứng thu được đã đủ để ra quyết định, BẠN PHẢI DỪNG LẠI NGAY VÀ FINISH. Không tiếp tục gọi thêm tool nếu nó không làm thay đổi quyết định cuối cùng.
+- TÔN TRỌNG BUDGET: Nêu ngắn gọn trong `analysis` lý do bằng chứng đã đủ kết luận. Đây là tín hiệu tốt, không phải lỗi.
 6. Kết quả RAG rỗng/ít điểm dữ liệu = THIẾU DỮ LIỆU, không phải bằng chứng "an
    toàn"/"bình thường". Ghi rõ trong 'evidence'/'analysis' và hạ confidence.
 7. Nếu operational_context và RAG cho hai giá trị khác nhau về cùng một sự thật:
    không tự chọn giá trị để tin. Đặt "evidence_conflict": true, hạ confidence, nêu
    cả hai giá trị trong 'analysis'.
-8. confidence < 0.5 -> skip=true, không đưa recommendation. Đây là abstention
-   heuristic (bạn tự đánh giá mức chắc chắn của mình), KHÔNG phải permission check.
+8. confidence < 0.35 -> skip=true, không đưa recommendation. Đây là abstention
+   heuristic (bạn tự đánh giá mức chắc chắn của mình). Confidence từ 0.35 đến 0.5:
+   bạn vẫn CÓ THỂ đưa recommendation nếu bằng chứng hợp lý — hãy ghi rõ mức
+   không chắc chắn trong 'analysis' và Policy Engine sẽ quyết định cuối.
 9. Permission/mode/safety-interlock (door permission, cooldown, rate limit, kill
-   switch...) là việc của Policy Engine, không phải của bạn. Có thể NÊU nghi ngờ
-   xung đột trong 'analysis', nhưng không cần tự chấm đúng/sai theo permission
-   matrix đầy đủ.
+   switch...) là việc của Policy Engine, KHÔNG phải của bạn. Nếu bạn nghi ngờ
+   recommendation có thể xung đột với mode hiện tại (vd set_door trong EXAM),
+   hãy NÊU nghi ngờ trong 'analysis' rồi vẫn submit — đừng tự reject thay Policy Engine.
 10. Chuyển trạng thái an toàn khẩn cấp (vd smoke suspected -> emergency) là quyết
     định deterministic của Gateway/FSM. Nếu operational_context đã ghi state=
     emergency, coi đó là sự thật đã xảy ra — nhiệm vụ của bạn là phân tích và đề
@@ -614,10 +616,12 @@ def build_mandatory_rag_prompt(event_type: EventType) -> str:
 
     lines = [
         f"## RAG tool BẮT BUỘC cho event_type='{event_type.value}':",
-        "Trước khi gọi 'finish', bạn PHẢI gọi đủ TẤT CẢ các tool sau (thứ tự tùy bạn):",
+        f"Bạn PHẢI gọi ít nhất tool số 1 (Core Tool) trước khi 'finish'. "
+        f"Sau khi gọi Core Tool, nếu bằng chứng đã đủ kết luận → FINISH NGAY (Early Exit hợp lệ).",
     ]
     for i, r in enumerate(mandatory, 1):
-        lines.append(f"{i}. {r.tool} — {r.purpose}")
+        tag = "[Core Tool — BẮT BUỘC gọi đầu tiên]" if i == 1 else "[Bổ sung — gọi nếu Core Tool chưa đủ kết luận]"
+        lines.append(f"{i}. {r.tool} {tag} — {r.purpose}")
         lines.append(f"   Action Input mẫu: {r.example_input}")
 
     if optional:
@@ -629,12 +633,12 @@ def build_mandatory_rag_prompt(event_type: EventType) -> str:
     lines += [
         "",
         "Ràng buộc:",
-        "- Bước đầu tiên của bạn PHẢI là một lượt gọi RAG tool (không phải 'finish').",
+        "- Bước đầu tiên PHẢI là gọi RAG tool (không phải 'finish' ngay).",
         "- Thay <room_id> bằng room_id thật lấy từ event/operational_context. Không tự bịa room_id khác.",
-        "- 'finish' chỉ hợp lệ khi đã gọi đủ các tool bắt buộc. Nếu chưa, trajectory bị coi là Not Accomplished.",
+        "- Sau khi gọi Core Tool, nếu bằng chứng đủ kết luận → finish là hợp lệ dù chưa gọi hết danh sách.",
         "- Bắt buộc gọi RAG kể cả khi bạn dự định skip=true.",
-        "- Nếu một RAG tool trả lỗi hoặc rỗng: ghi rõ vào 'analysis', hạ confidence tương ứng,",
-        "  rồi mới finish. Không được bỏ qua bước gọi và không coi kết quả rỗng là 'an toàn'.",
+        "- Nếu RAG tool trả lỗi hoặc rỗng: ghi rõ vào 'analysis', hạ confidence, rồi finish.",
+        "  Không coi kết quả rỗng là 'an toàn'.",
         "",
     ]
     return "\n".join(lines)
@@ -656,13 +660,14 @@ def build_tool_selection_prompt(
 
 ## Quy tắc chọn tool:
 - Action phải là một trong [{tool_names}].
-- BẮT BUỘC gọi các RAG tool ở mục "RAG tool BẮT BUỘC" trước khi 'finish'.
-  Không được gọi 'finish' khi chưa có ít nhất 1 Observation từ RAG tool.
-- Ngoài danh sách bắt buộc, chỉ gọi thêm RAG tool khi điều kiện "Gọi THÊM" xảy ra;
-  không gọi lặp lại cùng một tool với cùng tham số.
+- BƯ᩠C ĐẦU TIÊN: gọi 1 Core RAG Tool để xác minh trước khi 'finish'. Sau đó nếu bằng chứng đủ → finish ngay.
+- Chỉ gọi thêm RAG tool khi bằng chứng hiện tại chưa đủ để ra quyết định; không gọi lặp lại cùng tool với cùng tham số.
 - Action tools (set_fan, set_door, set_mode, trigger_buzzer, send_alert, set_led)
   KHÔNG được gọi trực tiếp trong lúc reasoning — phải đóng gói vào recommendation
-  của bước 'finish', và phải tuân theo "Action Tool Policy" ở mục kế tiếp.
+  của bước 'finish'.
+- Permission matrix (MODE_PERMISSIONS) là tài liệu THAM KHẢO để bạn ưu tiên tool phù hợp;
+  nếu bạn có lý do chính đáng để recommend tool ngoài matrix (vd tình huống đặc biệt),
+  hãy nêu rõ trong 'analysis' — Policy Engine sẽ quyết định cuối có thực thi hay không.
 - Tối đa {effective_max} lượt gọi RAG tool cho toàn bộ trajectory này.
 """
 
@@ -743,29 +748,32 @@ REVIEW_SYSTEM_PROMPT = """Bạn là reviewer nghiêm khắc, đánh giá xem AI 
 mà không có bằng chứng).
 
 Tiêu chí đánh giá:
-0. RAG Compliance (kiểm tra ĐẦU TIÊN): với event_type này, agent bắt buộc phải gọi
-   các RAG tool sau trước khi finish: [{required_rag}]. Nếu trajectory thiếu bất kỳ
-   tool nào trong danh sách, hoặc agent finish ngay ở bước đầu -> Not Accomplished,
-   bất kể kết quả cuối trông có hợp lý đến đâu (kể cả skip=true). Trong 'suggestions',
-   nêu rõ tool nào còn thiếu.
-1. Task Completion: agent có thực sự gọi tool cần thiết để lấy đủ bằng chứng
-   trước khi ra recommendation không? Recommendation cuối có nhất quán với
-   observation đã thu thập không?
-2. Rule Compliance & Action Tool Whitelist: recommendation (nếu có) có vi phạm
-   permission matrix, ngưỡng confidence 0.5 hay không? Riêng tool_name PHẢI nằm
-   trong candidate list của Action Tool Policy ứng với event_type (hoặc Emergency
-   Override nếu context đang khẩn cấp) — nếu tool nằm ngoài whitelist tương ứng ->
-   Not Accomplished. Nếu agent chọn tool khác mặc định mà 'analysis' không nêu rõ
-   lý do (đúng trường hợp đặc biệt nào) -> Partially Accomplished.
+0. RAG Compliance (kiểm tra ĐẦU TIÊN): với event_type này, Core RAG Tool đầu tiên
+   bắt buộc là: [{required_rag}] (lấy tool đầu tiên trong danh sách). Agent PHẢI gọi
+   ít nhất tool đó trước khi finish. Nếu trajectory không gọi bất kỳ RAG tool nào,
+   hoặc agent finish ngay bước đầu -> Not Accomplished. Nếu chỉ gọi Core Tool mà
+   bằng chứng đã đủ kết luận (Early Exit) -> Accomplished, không trừ điểm.
+1. Task Completion: agent có thực sự gọi tool để lấy bằng chứng trước khi ra
+   recommendation không? Recommendation cuối có nhất quán với observation đã thu
+   thập không? Early Exit hợp lệ nếu Core Tool đã cung cấp đủ bằng chứng.
+2. Rule Compliance & Action Tool Guidance: recommendation (nếu có) có vi phạm
+   ngưỡng confidence 0.35 không? Về action tool:
+   - Nếu tool nằm trong candidate list → OK.
+   - Nếu tool NẰM NGOÀI candidate list NHƯNG 'analysis' giải thích rõ lý do deviation
+     và lập luận hợp lý → vẫn có thể Accomplished (reviewer đánh giá chất lượng lý luận,
+     không chỉ kiểm tra danh sách).
+   - Nếu tool NẰM NGOÀI candidate list VÀ analysis hoàn toàn không giải thích →
+     Partially Accomplished. Permission enforcement là việc của Policy Engine;
+     reviewer chỉ kiểm tra tính nhất quán và có giải thích được của quyết định.
 3. Hallucination Check: nếu agent tuyên bố có bằng chứng nhưng trajectory không
    thể hiện đã gọi tool tương ứng -> Not Accomplished.
 4. Xử lý dữ liệu rỗng: nếu một RAG tool trả rỗng/thiếu dữ liệu mà agent coi đó là
    bằng chứng "an toàn/bình thường" hoặc không hạ confidence -> Partially Accomplished
    hoặc Not Accomplished. Agent dùng get_telemetry cho occupancy (tool không hỗ trợ)
    hoặc tự bịa room_id cho compare_rooms cũng là lỗi.
-5. Nếu agent đã gọi đủ RAG tool bắt buộc và hợp lý khi skip=true (vd sự kiện không
-   đủ nghiêm trọng, confidence thấp đúng như quan sát) -> vẫn tính là Accomplished,
-   skip là một kết quả hợp lệ.
+5. Nếu agent đã gọi ít nhất Core Tool và hợp lý khi skip=true (sự kiện không đủ
+   nghiêm trọng, confidence thấp đúng như quan sát, hoặc nghi ngờ xung đột mode)
+   -> Accomplished. skip là một kết quả hợp lệ ngang với recommendation.
 
 Sự kiện gốc: {event_context}
 Trajectory của agent: {trajectory}
@@ -784,16 +792,16 @@ Trả lời CHỈ bằng JSON, không thêm markdown:
 # ---------------------------------------------------------------------------
 REFLECT_SYSTEM_PROMPT = """Bạn là reasoning agent có khả năng tự cải thiện qua self-reflection.
 Bạn được cho một lượt xử lý trước đó, trong đó agent KHÔNG hoàn thành tốt việc xử
-lý sự kiện SmartCampus — hoặc do reasoning sai, gọi sai tool, bỏ qua bước gọi RAG
-tool bắt buộc, chọn action tool ngoài whitelist của Action Tool Policy, coi dữ
-liệu rỗng là bằng chứng an toàn, hoặc vi phạm rule an toàn (permission matrix,
-confidence threshold, whitelist).
+lý sự kiện SmartCampus — có thể do reasoning sai, không gọi RAG tool nào trước
+khi finish, hallucinate bằng chứng không có trong trajectory, coi dữ liệu rỗng là
+bằng chứng an toàn, hoặc recommendation không nhất quán với observation thực tế.
 
 Hãy chẩn đoán ngắn gọn nguyên nhân thất bại và đề ra một chiến lược mới, cụ thể,
-ở mức cao, để tránh lặp lại lỗi này trong lượt tiếp theo. Nếu nguyên nhân là thiếu
-RAG tool bắt buộc, chiến lược phải nêu rõ tool nào cần gọi trước khi finish. Nếu
-nguyên nhân là chọn sai action tool, chiến lược phải nêu rõ tool đúng theo Action
-Tool Policy của event đó. Viết thành câu hoàn chỉnh.
+ở mức cao, để tránh lặp lại lỗi này trong lượt tiếp theo. Nếu nguyên nhân là không gọi
+RAG tool trước khi finish, chiến lược phải nêu rõ tool nào cần gọi đầu tiên. Nếu
+nguyên nhân là recommendation không nhất quán hoặc thiếu giải thích (kể cả khi chọn
+tool ngoài candidate list mà không nêu lý do), chiến lược phải nêu cách làm rõ
+hơn trong analysis. Viết thành câu hoàn chỉnh.
 
 Sự kiện: {event_context}
 Trajectory trước: {trajectory}
@@ -802,11 +810,12 @@ Trajectory trước: {trajectory}
 Reflection:
 """
 
+
 # ---------------------------------------------------------------------------
 # Tiny Trajectory Store — MỌI ví dụ đều gọi RAG bắt buộc trước khi finish
 # ---------------------------------------------------------------------------
 TTS_EXAMPLES = """
-[Tool/Skill Teaching — temperature_anomaly: gọi đủ 2 RAG tool bắt buộc rồi mới kết luận]
+[Tool/Skill Teaching — temperature_anomaly: gọi Core Tool xong bằng chứng không đủ nên gọi thêm, rồi kết luận]
 Self-Ask: Nhiệt độ phòng đang diễn biến thế nào trong 1 giờ qua?
 Thought: Cần telemetry để xem xu hướng, đây là RAG tool bắt buộc.
 Action: get_telemetry
@@ -836,18 +845,15 @@ Thought: Đã gọi đủ RAG bắt buộc, xác nhận nhiệt độ đang tăn
 Action: finish
 Action Input: {"final_json": {"recommendation": {"tool_name": "set_fan", "tool_params": {"room_id": "b1f0...", "mode": "on"}, "reason": "Nhiệt độ tăng nhẹ và tiếp tục tăng theo dự báo, dùng hành động mặc định set_fan; chưa đạt severity cao nên không dùng trigger_buzzer", "confidence": 0.68, "urgency": "medium"}, "analysis": "get_telemetry: 27.0->30.4 tăng; get_predictions: dự báo 30.9, trend increasing, xác nhận sự kiện có thật. Theo Action Tool Policy, mặc định là set_fan; trigger_buzzer chỉ dùng khi severity cao nên không chọn ở đây.", "skip": false}}
 
-[Domain/Entity Teaching — manual_trigger: hiểu room_mode và permission matrix, vẫn gọi RAG trước khi skip]
-Self-Ask: Lệnh thủ công yêu cầu set_door; trước tiên phải kiểm tra lịch phòng và lịch sử?
-Thought: Dù nghi ngờ mode=exam sẽ chặn set_door, vẫn phải gọi RAG bắt buộc (get_schedule, get_room_history) trước khi finish.
-Action: get_schedule
-Action Input: {"room_id": "b1f0..."}
-Observation: {"schedule": [{"active_session": {"class_code": "EXAM01", "started_at": "2026-09-24T08:00"}}]}
+[Domain/Entity Teaching — manual_trigger: gọi Core Tool trước, nghi ngờ xung đột mode → ghi vào analysis rồi skip]
+Self-Ask: Lệnh thủ công yêu cầu set_door; cần kiểm tra lịch phòng trước — đây là Core Tool.
+Thought: Core Tool cho manual_trigger là get_room_history. Gọi ngay để xem context gần đây.
 Action: get_room_history
 Action Input: {"room_id": "b1f0...", "hours": 1}
 Observation: {"decisions": [], "environment_snapshots": [{"row_count": 12}]}
-Thought: current_mode="exam" trong operational_context, lịch xác nhận đang thi, không có emergency nào trong 1h qua. Theo permission matrix, set_door trong exam chỉ hợp lệ khi có emergency override.
+Thought: Không có emergency hay hành động xung đột gần đây. Nhưng operational_context cho thấy current_mode="EXAM". set_door trong EXAM có thể xung đột với vận hành thi cử — tôi không tự quyết permission mà sẽ nêu nghi ngờ này và skip để Policy Engine xử lý.
 Action: finish
-Action Input: {"final_json": {"skip": true, "skip_reason": "set_door không được phép trong mode exam", "analysis": "get_schedule xác nhận đang thi; get_room_history không có emergency. Không mở khóa cửa."}}
+Action Input: {"final_json": {"skip": true, "skip_reason": "nghi ngờ set_door có thể xung đột với mode EXAM hiện tại", "analysis": "get_room_history: không có emergency 1h qua. Tuy nhiên operational_context.room.current_mode=EXAM; set_door trong bối cảnh thi có thể gây xáo trộn. Quyết định cuối thuộc Policy Engine — agent chọn skip để bảo toàn."}}
 
 [Workflow Teaching — smoke_detected: xử lý khẩn cấp với 2 RAG tool bắt buộc, chọn
 action tool theo trường hợp đặc biệt "lần đầu, tăng liên tục" của Action Tool Policy]

@@ -5,11 +5,12 @@ Wrapper cho RAG Query Tools (section 3b) — read-only, agent tự gọi trong v
 (Observe → Think → Act, section 3d) để bổ sung thông tin trước khi ra recommendation.
 
 Rule 7 (section 7 - Security constraints):
-"max 5 RAG tool calls per evaluation. Nếu cần nhiều hơn, agent phải tổng hợp
+"max 4 RAG tool calls per evaluation. Nếu cần nhiều hơn, agent phải tổng hợp
 từ kết quả hiện có."
 → RagCallBudget enforce đúng rule này. agent.py PHẢI tạo 1 budget mới cho MỖI
 request /evaluate (không share giữa các evaluation khác nhau).
 """
+
 from __future__ import annotations
 
 import json
@@ -38,7 +39,8 @@ class RagBudgetExceeded(Exception):
 class RagCallBudget:
     """Đếm số RAG call trong 1 evaluation. Tạo mới cho mỗi request POST /evaluate."""
 
-    def __init__(self, max_calls: int = 5) -> None:
+    def __init__(self, max_calls: int = 4) -> None:
+
         self.max_calls = max_calls
         self.used = 0
         self.log: list[dict[str, Any]] = []
@@ -157,7 +159,7 @@ async def get_latest_contextual_summary(room_id: str, hours: int = 24) -> str | 
 
 
 class RagClient:
-    """Mỗi method map 1-1 với 1 RAG tool trong section 3b, gọi qua /api/rag/* (section 5)."""
+    """Mỗi method map 1-1 với 1 RAG tool trong section 3b, gọi qua /api/tool/reasoning/* (Edge server)."""
 
     TOOLS = (
         "search_history", "get_telemetry", "get_attendance",
@@ -179,10 +181,9 @@ class RagClient:
         if db_results and db_results.get("results"):
             return db_results
 
-        # 2. Fallback sang Gateway nếu DB chưa có bản ghi
-        return await self._client.post(
-            "/rag/search", json={"query": query, "room_id": room_id, "time_range": time_range}
-        )
+        # 2. Fallback: lấy raw summaries từ Edge nếu DB chưa có bản ghi
+        data = await self._client.get("/tool/reasoning/summaries", params={"limit": 5})
+        return {"query": query, "room_id": room_id, "time_range": time_range, "results": data if isinstance(data, list) else []}
 
     async def get_telemetry(self, room_id: str, metric: Metric, window: Window = "1h") -> dict[str, Any]:
         """Raw time-series data cho 1 metric cụ thể của 1 phòng."""
@@ -223,9 +224,13 @@ class RagClient:
         except Exception as e:
             logger.error("Failed to compute real telemetry: %s", e)
 
-        return await self._client.get(
-            f"/rag/telemetry/{room_id}", params={"metric": metric, "window": window}
-        )
+        logger.warning("get_telemetry: không có rows từ RoomsClient cho room %s / %s / %s", room_id, metric, window)
+        return {
+            "room_id": room_id, "metric": metric, "window": window,
+            "latest": None, "avg": None, "min": None, "max": None,
+            "trend": "unknown", "samples_count": 0,
+            "error": "Không có dữ liệu telemetry thực tế",
+        }
 
     async def get_attendance(
         self,
@@ -240,20 +245,20 @@ class RagClient:
             {"room_id": room_id, "session_id": session_id, "class_code": class_code}.items()
             if v is not None
         }
-        return await self._client.get("/rag/attendance", params=params)
+        return await self._client.get("/tool/reasoning/attendance", params=params)
 
     async def compare_rooms(self, room_ids: list[str], metric: str, window: str = "1h") -> dict[str, Any]:
         """So sánh 1 metric giữa nhiều phòng trong 1 khoảng thời gian."""
         self.budget.consume("compare_rooms")
         return await self._client.post(
-            "/rag/compare", json={"room_ids": room_ids, "metric": metric, "window": window}
+            "/tool/reasoning/compare", json={"room_ids": room_ids, "metric": metric, "window": window}
         )
 
     async def get_room_history(self, room_id: str, hours: int = 24) -> dict[str, Any]:
         """Lịch sử state transitions (FSM) của 1 phòng kết hợp contextual summary."""
         self.budget.consume("get_room_history")
         try:
-            data = await self._client.get(f"/tool/reasoning/history/{room_id}", params={"hours": hours})
+            data = await self._client.get(f"/tool/reasoning/history/{room_id}", params={"hours": hours})  # noqa: E501
         except Exception:
             data = {"room_id": room_id, "hours": hours, "transitions": []}
 
@@ -324,9 +329,13 @@ class RagClient:
         except Exception as e:
             logger.error("Failed to compute real predictions: %s", e)
 
-        return await self._client.get(
-            f"/rag/predict/{room_id}", params={"metric": metric, "horizon": horizon}
-        )
+        # Fallback: trả dữ liệu trống có cấu trúc, tránh gọi endpoint không tồn tại
+        logger.warning("get_predictions fallback: không tính được EWMA từ DB cho room %s", room_id)
+        return {
+            "room_id": room_id, "metric": metric, "horizon": horizon,
+            "predicted_value": None, "trend": "unknown", "confidence": 0.0,
+            "error": "Không có đủ dữ liệu lịch sử để tính dự báo",
+        }
 
     # -------- dispatcher dùng cho vòng lặp tool-calling của LLM (llm_client.py) --------
 
