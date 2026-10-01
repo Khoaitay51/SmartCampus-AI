@@ -40,7 +40,7 @@ from app.tools.registry import ACTION_TOOLS, FINISH_TOOL, RAG_TOOLS, is_tool_all
 
 logger = logging.getLogger(__name__)
 
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.35
 RagToolExecutor = Callable[[str, dict, OperationalContext], Awaitable[str]]
 
 class RagAdapter:
@@ -350,55 +350,26 @@ class ReActXenAgent:
                         )
                         return None, consecutive_parse_errors, consecutive_rag_errors
 
-                # Guard 2: Permission check for Multi-step Reasoning
+                # Guard permission (soft warn — Policy Engine sẽ enforce thực sự)
+                # Agent có quyền recommend bất kỳ tool nào nếu phân tích đủ cơ sở;
+                # permission matrix chỉ là gợi ý tham khảo, không hard-block ở đây.
                 if answer.recommendation is not None:
                     room_mode = getattr(state.context.room, "current_mode", "NORMAL") if getattr(state.context, "room", None) else "NORMAL"
                     if not is_tool_allowed_in_mode(answer.recommendation.tool_name, room_mode):
-                        observation = (
-                            f"[SYSTEM] Bị từ chối: Tool '{answer.recommendation.tool_name}' KHÔNG ĐƯỢC PHÉP sử dụng "
-                            f"trong chế độ phòng '{room_mode}'. Hãy suy luận lại và chọn một tool khác hợp lệ hơn "
-                            f"(nếu cần) hoặc skip."
+                        logger.warning(
+                            "Tool '%s' không có trong MODE_PERMISSIONS['%s'] — "
+                            "recommendation vẫn được pass, Policy Engine sẽ quyết định cuối.",
+                            answer.recommendation.tool_name, room_mode,
                         )
-                        state.trajectory.append(
-                            TrajectoryStep(
-                                self_ask=step.self_ask, thought=step.thought, action=step.action,
-                                action_input=step.action_input, observation=observation,
-                            )
-                        )
-                        state.structured_trace.append(
-                            StructuredTraceStep(
-                                step=step_num,
-                                decision="guard_blocked_finish",
-                                reason_code="PERMISSION_DENIED",
-                                observation_summary=observation[:300],
-                                action_input=step.action_input,
-                            )
-                        )
-                        continue
 
-                    # Guard 3: Confidence check
+                    # Guard confidence (soft warn): chỉ cảnh báo, không block
+                    # Hard stop thực sự là _final_safety_check() ở cuối
                     if answer.recommendation.confidence < CONFIDENCE_THRESHOLD:
-                        observation = (
-                            f"[SYSTEM] Bị từ chối: Confidence {answer.recommendation.confidence} quá thấp "
-                            f"(< {CONFIDENCE_THRESHOLD}). Nếu không chắc chắn, hãy tìm thêm bằng chứng (RAG) "
-                            f"hoặc đặt skip=true nếu thực sự không đủ điều kiện hành động."
+                        logger.warning(
+                            "Confidence %.2f thấp hơn ngưỡng %.2f — recommendation vẫn được pass, "
+                            "Policy Engine sẽ quyết định cuối.",
+                            answer.recommendation.confidence, CONFIDENCE_THRESHOLD,
                         )
-                        state.trajectory.append(
-                            TrajectoryStep(
-                                self_ask=step.self_ask, thought=step.thought, action=step.action,
-                                action_input=step.action_input, observation=observation,
-                            )
-                        )
-                        state.structured_trace.append(
-                            StructuredTraceStep(
-                                step=step_num,
-                                decision="guard_blocked_finish",
-                                reason_code="LOW_CONFIDENCE",
-                                observation_summary=observation[:300],
-                                action_input=step.action_input,
-                            )
-                        )
-                        continue
 
                 state.trajectory.append(
                     TrajectoryStep(
@@ -511,26 +482,18 @@ class ReActXenAgent:
         )
         return await self._llm.complete(prompt)
 
-    # Safety re-check cuối cùng
+    # Safety re-check cuối cùng — chỉ reject khi confidence dưới ngưỡng tối thiểu.
+    # Permission enforcement là việc của Policy Engine phía sau, không tự reject ở đây.
     def _final_safety_check(self, answer: AgentResponse, context: OperationalContext) -> AgentResponse:
         if answer.recommendation is None:
             return answer
 
         rec = answer.recommendation
-        room_mode = context.room.current_mode
-
-        violates_permission = not is_tool_allowed_in_mode(rec.tool_name, room_mode)
-        violates_confidence = rec.confidence < CONFIDENCE_THRESHOLD
-
-        if violates_permission or violates_confidence:
-            reason = (
-                f"tool '{rec.tool_name}' khong duoc phep trong mode '{room_mode}'"
-                if violates_permission
-                else f"confidence {rec.confidence} < nguong {CONFIDENCE_THRESHOLD}"
-            )
+        if rec.confidence < CONFIDENCE_THRESHOLD:
+            reason = f"confidence {rec.confidence} < nguong {CONFIDENCE_THRESHOLD}"
             logger.warning("Final safety check reject recommendation: %s", reason)
             answer.recommendation = None
             answer.skip = True
             answer.skip_reason = f"final_safety_check_failed: {reason}"
 
-        return answer
+        return answer

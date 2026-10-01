@@ -38,7 +38,8 @@ class AgentRunState(BaseModel):
     round: int = 0
     max_react_step: int = 6
     max_reflect_step: int = 3
-    rag_calls_remaining: int = 5
+    rag_calls_remaining: int = 4
+
 
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
