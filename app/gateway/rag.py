@@ -187,6 +187,42 @@ class RagClient:
     async def get_telemetry(self, room_id: str, metric: Metric, window: Window = "1h") -> dict[str, Any]:
         """Raw time-series data cho 1 metric cụ thể của 1 phòng."""
         self.budget.consume("get_telemetry")
+        
+        try:
+            from datetime import datetime, timedelta, timezone
+            from .rooms import RoomsClient
+            
+            hours = 1 if window == "1h" else (6 if window == "6h" else 0.25)
+            since = datetime.now(timezone.utc) - timedelta(hours=hours)
+            
+            rc = RoomsClient(self._client)
+            rows = await rc.get_environment(room_id, since)
+            
+            if rows:
+                vals = []
+                for r in rows:
+                    if metric == "smoke":
+                        val = r.get("smoke_value")
+                    else:
+                        val = r.get(metric)
+                    if val is not None:
+                        vals.append(val)
+                
+                if vals:
+                    return {
+                        "room_id": room_id,
+                        "metric": metric,
+                        "window": window,
+                        "latest": vals[-1],
+                        "avg": round(sum(vals)/len(vals), 1),
+                        "min": min(vals),
+                        "max": max(vals),
+                        "trend": "increasing" if vals[-1] > vals[0] else ("decreasing" if vals[-1] < vals[0] else "stable"),
+                        "samples_count": len(vals)
+                    }
+        except Exception as e:
+            logger.error("Failed to compute real telemetry: %s", e)
+
         return await self._client.get(
             f"/rag/telemetry/{room_id}", params={"metric": metric, "window": window}
         )
@@ -217,7 +253,7 @@ class RagClient:
         """Lịch sử state transitions (FSM) của 1 phòng kết hợp contextual summary."""
         self.budget.consume("get_room_history")
         try:
-            data = await self._client.get(f"/rooms/{room_id}/history", params={"hours": hours})
+            data = await self._client.get(f"/tool/reasoning/history/{room_id}", params={"hours": hours})
         except Exception:
             data = {"room_id": room_id, "hours": hours, "transitions": []}
 
@@ -236,11 +272,58 @@ class RagClient:
         """Query lịch học theo phòng hoặc theo ngày."""
         self.budget.consume("get_schedule")
         params = {k: v for k, v in {"room_id": room_id, "date": date}.items() if v is not None}
-        return await self._client.get("/rag/schedule", params=params)
+        return await self._client.get("/tool/reasoning/schedule", params=params)
 
     async def get_predictions(self, room_id: str, metric: str, horizon: Horizon = "15m") -> dict[str, Any]:
         """EWMA prediction cho 1 metric trong tương lai gần."""
         self.budget.consume("get_predictions")
+        
+        try:
+            from datetime import datetime, timedelta, timezone
+            from .rooms import RoomsClient
+            
+            since = datetime.now(timezone.utc) - timedelta(hours=1)
+            rc = RoomsClient(self._client)
+            rows = await rc.get_environment(room_id, since)
+            
+            if rows:
+                vals = []
+                for r in rows:
+                    if metric == "smoke":
+                        val = r.get("smoke_value")
+                    else:
+                        val = r.get(metric)
+                    if val is not None:
+                        vals.append(val)
+                
+                if vals:
+                    # Simple EWMA with alpha 0.3
+                    ewma = vals[0]
+                    for v in vals[1:]:
+                        ewma = 0.3 * v + 0.7 * ewma
+                    
+                    # Trend
+                    diff = ewma - vals[0]
+                    trend = "rising" if diff > 0 else ("falling" if diff < 0 else "stable")
+                    
+                    # Project forward (very simple projection)
+                    multiplier = 1.2 if horizon == "30m" else 1.1
+                    predicted_value = round(vals[-1] + diff * multiplier, 1)
+                    
+                    return {
+                        "room_id": room_id,
+                        "metric": metric,
+                        "horizon": horizon,
+                        "current_value": vals[-1],
+                        "predicted_value": predicted_value,
+                        "trend": trend,
+                        "confidence": 0.85,
+                        "model": "Local-EWMA-from-DB",
+                        "analysis": f"Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của {metric} đang {trend}. Dự đoán sẽ đạt {predicted_value} sau {horizon}."
+                    }
+        except Exception as e:
+            logger.error("Failed to compute real predictions: %s", e)
+
         return await self._client.get(
             f"/rag/predict/{room_id}", params={"metric": metric, "horizon": horizon}
         )
@@ -475,10 +558,12 @@ async def execute_rag_tool(
             result = await rag.call_tool(tool_name, params)
             return json.dumps(result, ensure_ascii=False)
         except Exception as exc:
-            logger.warning(
-                "Gateway chưa sẵn sàng (%s) → Tự động cung cấp Mock Data cho RAG tool '%s'",
-                exc, tool_name,
-            )
+            logger.warning("Lỗi khi gọi RAG tool '%s' (%s) → Trả về dữ liệu trống do Mock RAG đã bị tắt.", tool_name, exc)
+            return json.dumps({
+                "error": "Real API not available",
+                "message": f"Dữ liệu thực tế cho {tool_name} không tồn tại hoặc API lỗi.",
+                "data": None
+            }, ensure_ascii=False)
 
     mock_result = get_mock_rag_data(tool_name, params, context)
     logger.info("Đã trả về Mock Data cho RAG tool '%s': %s", tool_name, list(mock_result.keys()))
