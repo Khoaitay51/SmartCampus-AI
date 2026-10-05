@@ -189,12 +189,33 @@ async def _auto_sync_room_and_device(
                     except (ValueError, TypeError):
                         pass
 
-                new_mode = inner.get("current_mode") or (inner.get("mode") if "/state" in topic else None)
-                valid_modes = ('SAVING', 'SELF_STUDY', 'LECTURE', 'EXAM', 'LOCK', 'SUSPECTED', 'EMERGENCY')
-                if new_mode and new_mode in valid_modes:
-                    if room.mode != new_mode:
-                        room.previous_mode = room.mode
-                        room.mode = new_mode
+                # Cập nhật chế độ phòng FSM (hỗ trợ room_mode, current_mode, mode, state từ Edge & ESP32)
+                raw_mode = (
+                    inner.get("room_mode")
+                    or inner.get("current_mode")
+                    or inner.get("mode")
+                    or inner.get("state")
+                    or (inner.get("command_value") if inner.get("command_type") == "mode" else None)
+                )
+                if raw_mode:
+                    mode_candidate = str(raw_mode).strip().upper().replace("-", "_")
+                    valid_modes = ('SAVING', 'SELF_STUDY', 'LECTURE', 'EXAM', 'LOCK', 'SUSPECTED', 'EMERGENCY')
+                    if mode_candidate in valid_modes:
+                        if room.mode != mode_candidate:
+                            room.previous_mode = room.mode
+                            room.mode = mode_candidate
+                            logger.info("Auto-sync: Cập nhật Room %s (%s) sang Mode: %s", room.name, target_room_uuid, room.mode)
+
+                # Đồng bộ trạng thái chấp hành (quạt, cửa)
+                if "door_locked" in inner and inner["door_locked"] is not None:
+                    room.door_locked = bool(inner["door_locked"])
+                elif inner.get("command_type") == "door":
+                    room.door_locked = (str(inner.get("command_value", "")).lower() == "locked")
+
+                if "fan_on" in inner and inner["fan_on"] is not None:
+                    room.fan_on = bool(inner["fan_on"])
+                elif inner.get("command_type") == "fan":
+                    room.fan_on = (str(inner.get("command_value", "")).lower() in ("on", "1", "true", "high"))
 
             # 2. Đồng bộ Device
             if device_id:
@@ -390,6 +411,28 @@ async def _run_agent_task(
         # Broadcast WebSocket tới Digital Twin UI (hiển thị popup HITL hoặc thông báo Auto-pilot)
         await ws_manager.broadcast(rec_data)
 
+        # Nếu tool là send_alert, gửi kèm event system_alert để Web hiển thị ngay Pop up cảnh báo
+        if str(response.recommendation.tool_name).lower().strip() == "send_alert":
+            await ws_manager.broadcast({
+                "type": "system_alert",
+                "alert": {
+                    "id": rec_id_str,
+                    "recommendation_id": rec_id_str,
+                    "event_id": str(event.event_id),
+                    "room_id": str(room_uuid),
+                    "room_name": room_name,
+                    "tool_name": "send_alert",
+                    "message": rec_params.get("message") or response.recommendation.reason or "Cảnh báo khẩn cấp từ AI Agent",
+                    "level": str(rec_params.get("level", "warning")).lower(),
+                    "reason": response.recommendation.reason,
+                    "confidence": response.recommendation.confidence,
+                    "urgency": response.recommendation.urgency,
+                    "status": status_init,
+                    "hitl_enabled": hitl_active,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            })
+
         # Publish MQTT topic smartcampus/v1/ai/recommendation
         if client:
             try:
@@ -476,8 +519,13 @@ async def _handle_mqtt_message(
 
     # 3. Trạng thái phòng FSM (SAVING, LECTURE, EMERGENCY,...)
     elif "/room/" in topic and topic.endswith("/state") and room_id:
-        ws_message["type"] = "room_state_change"
+        raw_mode = (inner.get("room_mode") or inner.get("mode") or inner.get("current_mode") or inner.get("state")) if isinstance(inner, dict) else "SAVING"
+        norm_mode = str(raw_mode).strip().upper().replace("-", "_") if raw_mode else "SAVING"
+        ws_message["type"] = "room_mode_changed"
         ws_message["room_id"] = room_id
+        ws_message["mode"] = norm_mode
+        ws_message["current_mode"] = norm_mode
+        ws_message["room_mode"] = norm_mode
         await ws_manager.broadcast_to_room(room_id, ws_message)
         await ws_manager.broadcast(ws_message)
 
@@ -536,7 +584,18 @@ async def _handle_mqtt_message(
     elif "/command/room/" in topic and room_id:
         ws_message["type"] = "room_command"
         ws_message["room_id"] = room_id
+        cmd_type = inner.get("command_type") if isinstance(inner, dict) else ""
+        cmd_val = inner.get("command_value") if isinstance(inner, dict) else ""
+        if cmd_type == "mode" and cmd_val:
+            norm_mode = str(cmd_val).strip().upper().replace("-", "_")
+            ws_message["type"] = "room_mode_changed"
+            ws_message["mode"] = norm_mode
+            ws_message["current_mode"] = norm_mode
+        elif cmd_type in ("door", "fan", "light", "buzzer"):
+            ws_message["actuator_type"] = cmd_type
+            ws_message["actuator_value"] = cmd_val
         await ws_manager.broadcast_to_room(room_id, ws_message)
+        await ws_manager.broadcast(ws_message)
 
     # 10. Phản hồi xác nhận lệnh từ thiết bị (Command ACK)
     elif "/ack/device/" in topic:

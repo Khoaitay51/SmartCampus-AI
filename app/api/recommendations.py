@@ -13,6 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,6 +69,41 @@ async def create_recommendation(
     db.add(rec)
     await db.commit()
     await db.refresh(rec)
+
+    from app.websocket.manager import ws_manager
+    await ws_manager.broadcast({
+        "type": "ai_recommendation",
+        "id": str(rec.id),
+        "recommendation_id": str(rec.id),
+        "event_id": str(rec.event_id) if rec.event_id else None,
+        "room_id": str(rec.room_id) if rec.room_id else None,
+        "tool_name": rec.tool_name,
+        "tool_params": rec.tool_params,
+        "reason": rec.reason,
+        "confidence": rec.confidence,
+        "urgency": rec.urgency,
+        "status": rec.status,
+    })
+
+    if str(rec.tool_name).lower().strip() == "send_alert":
+        await ws_manager.broadcast({
+            "type": "system_alert",
+            "alert": {
+                "id": str(rec.id),
+                "recommendation_id": str(rec.id),
+                "event_id": str(rec.event_id) if rec.event_id else None,
+                "room_id": str(rec.room_id) if rec.room_id else None,
+                "tool_name": "send_alert",
+                "message": rec.tool_params.get("message") or rec.reason or "Cảnh báo hệ thống SmartCampus",
+                "level": str(rec.tool_params.get("level", "warning")).lower(),
+                "reason": rec.reason,
+                "confidence": rec.confidence,
+                "urgency": rec.urgency,
+                "status": rec.status,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        })
+
     return rec
 
 
@@ -173,4 +209,98 @@ async def execute_recommendation(
     if exec_result:
         resp_obj.execution_result = exec_result
     return resp_obj
+
+
+class SimulateAlertRequest(BaseModel):
+    room_id: UUID | None = None
+    message: str = "Phát hiện quẹt thẻ không hợp lệ ngoài giờ tại phòng học A402"
+    level: str = "warning"  # info, warning, critical
+    reason: str = "AI Agent phân tích RFID và lịch học phát hiện thẻ chưa được cấp quyền"
+
+
+@router.post("/simulate-alert", response_model=RecommendationResponse)
+async def simulate_alert(
+    req: SimulateAlertRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Mô phỏng AI Agent gọi tool send_alert để kiểm tra Pop up Web."""
+    from app.campus.hitl import is_hitl_enabled, dispatch_tool_execution
+    from app.websocket.manager import ws_manager
+
+    hitl_active = is_hitl_enabled()
+    status_init = "pending" if hitl_active else "auto_approved"
+
+    target_room_id = req.room_id or UUID("11111111-1111-1111-1111-111111111111")
+    tool_params = {
+        "room_id": str(target_room_id),
+        "message": req.message,
+        "level": req.level,
+    }
+
+    rec = AIRecommendation(
+        event_id=f"sim-alert-{int(datetime.now(timezone.utc).timestamp())}",
+        room_id=target_room_id,
+        tool_name="send_alert",
+        tool_params=tool_params,
+        reason=req.reason,
+        confidence=0.98,
+        urgency="critical" if req.level == "critical" else "medium",
+        status=status_init,
+        reviewed_at=datetime.now(timezone.utc) if not hitl_active else None,
+        review_notes="Auto-pilot simulated alert" if not hitl_active else None,
+    )
+    db.add(rec)
+    await db.commit()
+    await db.refresh(rec)
+
+    # 1. Broadcast AI Recommendation
+    await ws_manager.broadcast({
+        "type": "ai_recommendation",
+        "id": str(rec.id),
+        "recommendation_id": str(rec.id),
+        "event_id": str(rec.event_id),
+        "room_id": str(rec.room_id),
+        "tool_name": "send_alert",
+        "tool_params": tool_params,
+        "reason": rec.reason,
+        "confidence": rec.confidence,
+        "urgency": rec.urgency,
+        "status": rec.status,
+    })
+
+    # 2. Broadcast System Alert Popup
+    await ws_manager.broadcast({
+        "type": "system_alert",
+        "alert": {
+            "id": str(rec.id),
+            "recommendation_id": str(rec.id),
+            "event_id": str(rec.event_id),
+            "room_id": str(rec.room_id),
+            "tool_name": "send_alert",
+            "message": req.message,
+            "level": req.level,
+            "reason": req.reason,
+            "confidence": rec.confidence,
+            "urgency": rec.urgency,
+            "status": rec.status,
+            "hitl_enabled": hitl_active,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    })
+
+    # 3. Nếu Autopilot -> tự động execute
+    if not hitl_active:
+        await dispatch_tool_execution(
+            rec_id=rec.id,
+            room_id=rec.room_id,
+            tool_name="send_alert",
+            tool_params=tool_params,
+            reason=req.reason,
+            operator="SIMULATED_AUTOPILOT",
+            is_auto=True,
+        )
+
+    return rec
+
 

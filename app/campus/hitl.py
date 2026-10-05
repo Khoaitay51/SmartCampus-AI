@@ -6,6 +6,7 @@ từ AI Recommendation sang Edge Gateway và MQTT Actuators.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import logging
 from typing import Any
 from uuid import UUID
@@ -151,5 +152,25 @@ async def dispatch_tool_execution(
         **result_summary,
     }
     await ws_manager.broadcast(ws_payload)
+
+    # Nếu tool là send_alert, phát riêng gói tin system_alert để Frontend mở ngay Pop up cảnh báo
+    if tool_name.lower().strip() == "send_alert":
+        alert_payload = {
+            "type": "system_alert",
+            "alert": {
+                "id": str(rec_id),
+                "recommendation_id": str(rec_id),
+                "room_id": room_id_str,
+                "tool_name": "send_alert",
+                "message": tool_params.get("message") or reason or "Cảnh báo an ninh / an toàn từ AI Agent",
+                "level": str(tool_params.get("level", "warning")).lower(),
+                "reason": reason,
+                "operator": operator,
+                "is_auto": is_auto,
+                "status": "approved" if not is_auto else "auto_approved",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+        await ws_manager.broadcast(alert_payload)
 
     return result_summary

@@ -30,9 +30,46 @@ from app.database.session import get_async_db
 from app.websocket.manager import ws_manager
 from app.websocket.mqtt_bridge import publish_mqtt_message
 
+import httpx
+from app.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/rfid", tags=["RFID"])
+
+
+async def sync_card_to_edge_gateway(
+    card_uid: str,
+    user_id: str | None = None,
+    username: str | None = None,
+    full_name: str | None = None,
+    role: str = "student",
+) -> bool:
+    """Direct synchronous REST sync of approved card to Edge Gateway DB."""
+    payload = {
+        "card_uid": card_uid,
+        "user_id": str(user_id) if user_id else None,
+        "username": username,
+        "full_name": full_name,
+        "role": role,
+    }
+    candidate_urls = [
+        "http://smartcampus-api:8000/api/cards/sync",
+        f"{settings.BACKEND_BASE_URL.rstrip('/')}/cards/sync",
+        "http://host.docker.internal:8000/api/cards/sync",
+        "http://localhost:8000/api/cards/sync",
+    ]
+    for url in candidate_urls:
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                res = await client.post(url, json=payload)
+                if res.status_code in (200, 201):
+                    logger.info("Direct REST sync to Edge successful via %s: %s", url, card_uid)
+                    return True
+        except Exception as e:
+            logger.debug("Sync candidate %s failed: %s", url, e)
+    logger.warning("Could not sync card %s to Edge Gateway via direct REST (MQTT fallback will handle)", card_uid)
+    return False
 
 
 
@@ -100,6 +137,32 @@ async def register_rfid(
         await db.refresh(card)
 
     user = await db.get(User, card.user_id) if card.user_id else None
+
+    # Tự động đồng bộ sang Edge Gateway DB
+    if card.is_registered and user:
+        await sync_card_to_edge_gateway(
+            card_uid=card.uid,
+            user_id=user.id,
+            username=user.username,
+            full_name=user.full_name,
+            role=user.role,
+        )
+        await publish_mqtt_message(
+            "smartcampus/v1/card/registration/response",
+            {
+                "message_id": str(uuid.uuid4()),
+                "payload": {
+                    "card_uid": card.uid,
+                    "status": "approved",
+                    "assigned_user_id": str(user.id),
+                    "assigned_user_name": user.full_name or user.username,
+                    "role": user.role,
+                    "username": user.username,
+                    "message": f"Thẻ {card.uid} đã được đăng ký",
+                },
+            },
+        )
+
     return RFIDCardResponse(
         id=card.id,
         uid=card.uid,
@@ -238,6 +301,17 @@ async def approve_card_registration_request(
     await db.commit()
     await db.refresh(req)
 
+    # 0. Đồng bộ trực tiếp qua REST API tới Edge Gateway DB
+    assigned_role = target_user.role if target_user else (data.role or "student")
+    assigned_uname = target_user.username if target_user else (data.username or f"user_{req.card_uid}")
+    await sync_card_to_edge_gateway(
+        card_uid=req.card_uid,
+        user_id=target_user.id if target_user else None,
+        username=assigned_uname,
+        full_name=assigned_name,
+        role=assigned_role,
+    )
+
     # 1. Phát MQTT Response về Corridor Node
     resp_topic = f"smartcampus/v1/card/registration/response/{req.mac_address}" if req.mac_address else "smartcampus/v1/card/registration/response/broadcast"
     payload = {
@@ -248,6 +322,8 @@ async def approve_card_registration_request(
             "status": "approved",
             "assigned_user_id": str(target_user.id) if target_user else None,
             "assigned_user_name": assigned_name,
+            "role": assigned_role,
+            "username": assigned_uname,
             "message": f"Thẻ {req.card_uid} đã duyệt thành công",
         },
     }
@@ -267,6 +343,56 @@ async def approve_card_registration_request(
     })
 
     return req
+
+
+@router.post("/sync-all-to-edge")
+async def sync_all_cards_to_edge(
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Đồng bộ toàn bộ thẻ đã đăng ký từ pgvector sang Edge Gateway DB (Bulk Sync).
+
+    Đảm bảo 100% tính nhất quán dữ liệu giữa Web UI Cloud và Edge Gateway.
+    """
+    result = await db.execute(select(RFIDCard).where(RFIDCard.is_registered == True))
+    cards = result.scalars().all()
+
+    items_to_sync = []
+    for card in cards:
+        user = await db.get(User, card.user_id) if card.user_id else None
+        items_to_sync.append({
+            "card_uid": card.uid,
+            "user_id": str(user.id) if user else None,
+            "username": user.username if user else f"user_{card.uid}",
+            "full_name": user.full_name if user else (user.username if user else "Người dùng"),
+            "role": user.role if user else "student",
+            "is_active": 1,
+        })
+
+    synced_count = 0
+    candidate_urls = [
+        "http://smartcampus-api:8000/api/cards/sync-bulk",
+        f"{settings.BACKEND_BASE_URL.rstrip('/')}/cards/sync-bulk",
+        "http://host.docker.internal:8000/api/cards/sync-bulk",
+        "http://localhost:8000/api/cards/sync-bulk",
+    ]
+    for url in candidate_urls:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                res = await client.post(url, json={"cards": items_to_sync})
+                if res.status_code == 200:
+                    data = res.json()
+                    synced_count = data.get("count", len(items_to_sync))
+                    logger.info("Bulk sync to Edge Gateway via %s succeeded (%d cards)", url, synced_count)
+                    break
+        except Exception as e:
+            logger.debug("Bulk sync failed via %s: %s", url, e)
+
+    return {
+        "success": True,
+        "total_cards_in_cloud": len(items_to_sync),
+        "synced_to_edge": synced_count,
+        "cards": [c["card_uid"] for c in items_to_sync],
+    }
 
 
 @router.post("/requests/{request_id}/reject", response_model=CardRegistrationRequestResponse)

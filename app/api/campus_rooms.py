@@ -134,6 +134,45 @@ async def update_room_state(
     await db.commit()
     await db.refresh(room)
 
+    # 1. Phát sự kiện WebSocket tới toàn bộ Digital Twin Web UI
+    from app.websocket.manager import ws_manager
+    await ws_manager.broadcast({
+        "type": "room_mode_changed",
+        "room_id": str(room_id),
+        "mode": room.mode,
+        "previous_mode": room.previous_mode,
+        "door_locked": room.door_locked,
+        "fan_on": room.fan_on,
+    })
+
+    # 2. Publish MQTT thông báo cập nhật state xuống ESP32 phần cứng
+    from app.websocket.mqtt_bridge import publish_mqtt_message
+    await publish_mqtt_message(
+        f"smartcampus/v1/room/{room_id}/state",
+        {
+            "room_id": str(room_id),
+            "room_mode": room.mode.lower(),
+            "room_status": "online",
+        },
+    )
+
+    # 3. Đồng bộ trạng thái sang Edge Gateway & TimescaleDB
+    from app.config.settings import settings
+    import httpx
+    try:
+        base_edge_url = settings.BACKEND_BASE_URL.rstrip("/")
+        edge_exec_url = f"{base_edge_url}/api/commands/room/execute" if not base_edge_url.endswith("/api") else f"{base_edge_url}/commands/room/execute"
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            await client.post(edge_exec_url, json={
+                "room_id": str(room_id),
+                "command_type": "mode",
+                "command_value": room.mode.lower(),
+                "reason": f"Manual mode update by {_admin.username}",
+                "source": "dtwin_admin",
+            })
+    except Exception as exc:
+        logger.warning("Không thể gọi Edge Gateway đồng bộ mode: %s", exc)
+
     logger.info("Room %s state changed: %s → %s", room.name, room.previous_mode, room.mode)
     return room
 
