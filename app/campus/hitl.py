@@ -42,26 +42,25 @@ def translate_recommendation_to_command(tool_name: str, tool_params: dict[str, A
     tool_lower = (tool_name or "").lower().strip()
     
     if tool_lower in ("set_fan", "fan_control"):
-        state = str(tool_params.get("state", "on")).lower()
-        val = "on" if state in ("on", "1", "true", "high") else "off"
+        raw_val = str(tool_params.get("state") or tool_params.get("value") or tool_params.get("status") or "").lower().strip()
+        val = "off" if raw_val in ("off", "0", "false", "low", "stop", "tat", "tắt") else "on"
         return "fan", val
 
     elif tool_lower in ("set_door", "door_control"):
-        state = str(tool_params.get("state", "unlocked")).lower()
-        val = "locked" if state in ("locked", "lock", "true") else "unlocked"
+        raw_val = str(tool_params.get("state") or tool_params.get("value") or tool_params.get("status") or "").lower().strip()
+        val = "locked" if raw_val in ("locked", "lock", "true", "1", "dong", "đóng", "khoa", "khóa") else "unlocked"
         return "door", val
 
     elif tool_lower in ("set_mode", "mode_control"):
-        mode = str(tool_params.get("mode", "saving")).lower()
+        mode = str(tool_params.get("mode") or tool_params.get("value") or "saving").lower()
         return "mode", mode
 
     elif tool_lower in ("trigger_buzzer", "buzzer_control"):
-        pattern = str(tool_params.get("pattern", "short")).lower()
-        # Edge chấp nhận on, off, double, long, emergency...
+        pattern = str(tool_params.get("pattern") or tool_params.get("state") or tool_params.get("value") or "short").lower()
         return "buzzer", pattern if pattern in ("off", "0", "false") else "on"
 
     elif tool_lower in ("set_led", "led_strip_control"):
-        state = str(tool_params.get("state", "solid")).lower()
+        state = str(tool_params.get("state") or tool_params.get("value") or "solid").lower()
         val = "off" if state in ("off", "0") else "on"
         return "light", val
 
