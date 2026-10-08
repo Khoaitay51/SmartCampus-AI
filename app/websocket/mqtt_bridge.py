@@ -129,7 +129,15 @@ async def _auto_sync_room_and_device(
         try:
             target_room_uuid = UUID(room_id)
         except (ValueError, TypeError):
-            target_room_uuid = None
+            if room_id in ("room1", "1", "room-402"):
+                target_room_uuid = UUID("11111111-1111-1111-1111-111111111111")
+            elif room_id in ("room2", "2", "corridor", "hanhlang"):
+                target_room_uuid = UUID("11111111-1111-1111-1111-111111111110")
+            else:
+                try:
+                    target_room_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, room_id)
+                except Exception:
+                    target_room_uuid = None
 
     async with get_db_context() as db:
         try:
@@ -180,14 +188,23 @@ async def _auto_sync_room_and_device(
                         pass
                 if "occupancy" in inner and inner["occupancy"] is not None:
                     try:
-                        room.occupancy = int(inner["occupancy"])
+                        room.occupancy = max(0, int(inner["occupancy"]))
+                    except (ValueError, TypeError):
+                        pass
+                elif "occupancy_count" in inner and inner["occupancy_count"] is not None:
+                    try:
+                        room.occupancy = max(0, int(inner["occupancy_count"]))
                     except (ValueError, TypeError):
                         pass
                 elif "count" in inner and inner["count"] is not None and "/occupancy" in topic:
                     try:
-                        room.occupancy = int(inner["count"])
+                        room.occupancy = max(0, int(inner["count"]))
                     except (ValueError, TypeError):
                         pass
+                elif inner.get("occupancy_type") == "IN" and "/occupancy" in topic:
+                    room.occupancy = max(0, (room.occupancy or 0) + 1)
+                elif inner.get("occupancy_type") == "OUT" and "/occupancy" in topic:
+                    room.occupancy = max(0, (room.occupancy or 0) - 1)
 
                 # Cập nhật chế độ phòng FSM (hỗ trợ room_mode, current_mode, mode, state từ Edge & ESP32)
                 raw_mode = (
@@ -205,6 +222,21 @@ async def _auto_sync_room_and_device(
                             room.previous_mode = room.mode
                             room.mode = mode_candidate
                             logger.info("Auto-sync: Cập nhật Room %s (%s) sang Mode: %s", room.name, target_room_uuid, room.mode)
+                            if mode_candidate == "LOCK":
+                                room.door_locked = True
+                                room.fan_on = False
+                            elif mode_candidate == "EMERGENCY":
+                                room.door_locked = False
+                                room.fan_on = False
+                            elif mode_candidate == "EXAM":
+                                room.door_locked = True
+                                room.fan_on = True
+                            elif mode_candidate in ("SELF_STUDY", "LECTURE"):
+                                room.door_locked = False
+                                room.fan_on = True
+                            elif mode_candidate == "SAVING":
+                                room.door_locked = True
+                                room.fan_on = False
 
                 # Đồng bộ trạng thái chấp hành (quạt, cửa)
                 if "door_locked" in inner and inner["door_locked"] is not None:
@@ -403,9 +435,8 @@ async def _run_agent_task(
             "analysis": response.analysis,
             "is_fallback": response.is_fallback,
             "requires_confirmation": hitl_active,
-            "hitl_enabled": hitl_active,
             "auto_executed": not hitl_active,
-            "edge_rest_endpoint": "http://localhost:8000/api/commands/room/execute",
+            "edge_rest_endpoint": f"{settings.BACKEND_BASE_URL.rstrip('/')}/commands/room/execute" if settings.BACKEND_BASE_URL.rstrip('/').endswith("/api") else f"{settings.BACKEND_BASE_URL.rstrip('/')}/api/commands/room/execute",
         }
 
         # Broadcast WebSocket tới Digital Twin UI (hiển thị popup HITL hoặc thông báo Auto-pilot)
@@ -514,6 +545,11 @@ async def _handle_mqtt_message(
     elif "/telemetry/room/" in topic and "/occupancy" in topic and room_id:
         ws_message["type"] = "telemetry_occupancy"
         ws_message["room_id"] = room_id
+        if isinstance(inner, dict):
+            if "occupancy" not in inner and "occupancy_count" in inner:
+                inner["occupancy"] = inner["occupancy_count"]
+            elif "occupancy" not in inner and "count" in inner:
+                inner["occupancy"] = inner["count"]
         await ws_manager.broadcast_to_room(room_id, ws_message)
         await ws_manager.broadcast(ws_message)
 

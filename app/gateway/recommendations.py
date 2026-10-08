@@ -144,7 +144,11 @@ async def post_recommendation(
     if client is not None:
         return await client.post("/ai/recommend", json=payload)
 
-    base_url = (getattr(settings, "GATEWAY_API_URL", None) or "http://localhost:8000/api").rstrip("/")
+    base_url = (
+        getattr(settings, "GATEWAY_BASE_URL", None)
+        or getattr(settings, "GATEWAY_API_URL", None)
+        or "http://smartcampus-api:8000/api"
+    ).rstrip("/")
     endpoint = f"{base_url}/ai/recommend"
 
     async with httpx.AsyncClient() as http_client:

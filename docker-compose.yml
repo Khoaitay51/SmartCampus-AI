@@ -11,7 +11,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-smartcampus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgvector_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d:ro
@@ -103,7 +103,8 @@ services:
       OLLAMA_FALLBACK_MODEL: qwen2:1.5b
       EMBEDDING_MODEL: nomic-embed-text
       EMBEDDING_DIM: 768
-      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://host.docker.internal:8000}
+      BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://smartcampus-api:8000}
+      GATEWAY_BASE_URL: ${GATEWAY_BASE_URL:-http://smartcampus-api:8000/api}
       AUDIT_OUTPUT_DIR: /app/output
     ports:
       - "${AI_PORT:-8001}:8000"

@@ -38,6 +38,7 @@ class ChatResponse(BaseModel):
     reply: str
     room_id: Optional[str] = None
     suggested_action: Optional[str] = None
+    suggested_params: dict[str, Any] = {}
     evidence: list[str] = []
     timestamp: str
 
@@ -174,9 +175,47 @@ YÊU CẦU TRẢ LỜI:
                 "Hiện tại các phòng học đang được giám sát thời gian thực với Edge Gateway."
             )
 
+    # 6. Suy luận chính xác công cụ và tham số cần kích hoạt
+    suggested_action: str | None = None
+    suggested_params: dict[str, Any] = {}
+    msg_low = message.lower()
+    reply_low = reply.lower()
+
+    if "tắt quạt" in msg_low or ("quạt" in msg_low and ("tắt" in msg_low or "dừng" in msg_low or "ngừng" in msg_low)):
+        suggested_action = "set_fan"
+        suggested_params = {"state": "off"}
+    elif "bật quạt" in msg_low or ("quạt" in msg_low and ("bật" in msg_low or "mở" in msg_low)):
+        suggested_action = "set_fan"
+        suggested_params = {"state": "on"}
+    elif "khóa cửa" in msg_low or ("cửa" in msg_low and "khóa" in msg_low):
+        suggested_action = "set_door"
+        suggested_params = {"state": "locked"}
+    elif "mở cửa" in msg_low or ("cửa" in msg_low and "mở" in msg_low):
+        suggested_action = "set_door"
+        suggested_params = {"state": "unlocked"}
+    elif "còi" in msg_low or "buzzer" in msg_low or "báo động" in msg_low:
+        suggested_action = "trigger_buzzer"
+        suggested_params = {"pattern": "short"}
+    elif "trigger_buzzer" in reply:
+        suggested_action = "trigger_buzzer"
+        suggested_params = {"pattern": "short"}
+    elif "set_fan" in reply:
+        suggested_action = "set_fan"
+        is_on = ("(bật)" in reply_low or "bật quạt" in reply_low or "set_fan(on)" in reply_low or "bật" in msg_low) and not ("tắt" in msg_low)
+        suggested_params = {"state": "on" if is_on else "off"}
+    elif "set_door" in reply:
+        suggested_action = "set_door"
+        is_locked = ("(khóa)" in reply_low or "khóa cửa" in reply_low or "khóa" in msg_low) and not ("mở" in msg_low)
+        suggested_params = {"state": "locked" if is_locked else "unlocked"}
+
+    if req.room_id and suggested_action:
+        suggested_params["room_id"] = req.room_id
+
     return ChatResponse(
         reply=reply,
         room_id=req.room_id,
+        suggested_action=suggested_action,
+        suggested_params=suggested_params,
         evidence=evidence,
         timestamp=datetime.now(timezone.utc).isoformat(),
     )

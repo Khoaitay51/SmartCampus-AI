@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_active_user, require_role
 from app.auth.models import User
-from app.campus.models import AIRecommendation
+from app.campus.models import AIRecommendation, Room
 from app.campus.schemas import HitlToggleRequest, RecommendationAction, RecommendationResponse
 from app.database.session import get_async_db
 
@@ -209,6 +209,90 @@ async def execute_recommendation(
     if exec_result:
         resp_obj.execution_result = exec_result
     return resp_obj
+
+
+class DirectExecuteRequest(BaseModel):
+    tool_name: str
+    room_id: str | None = None
+    tool_params: dict[str, Any] = {}
+    reason: str = "Direct tool execution from Operator"
+    action: str = "approve"
+
+
+@router.post("/direct-execute")
+async def direct_execute_tool(
+    req: DirectExecuteRequest,
+    current_user: User = Depends(require_role("admin", "lecturer")),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Thực thi trực tiếp công cụ do AI Agent đề xuất từ hội thoại Chat hoặc HITL."""
+    from app.campus.hitl import dispatch_tool_execution
+    import uuid as _uuid
+
+    target_room_id = req.room_id or str(req.tool_params.get("room_id", ""))
+    tool_params = {**req.tool_params}
+    if target_room_id:
+        tool_params["room_id"] = target_room_id
+
+    rec_id = _uuid.uuid4()
+    room_uuid: UUID | None = None
+    if target_room_id:
+        try:
+            r_cand = UUID(target_room_id)
+            r_obj = await db.get(Room, r_cand)
+            if r_obj:
+                room_uuid = r_cand
+        except Exception:
+            pass
+
+    if not room_uuid:
+        r_res = await db.execute(select(Room))
+        all_rooms = r_res.scalars().all()
+        for r in all_rooms:
+            if target_room_id and (target_room_id in r.name or r.name in target_room_id):
+                room_uuid = r.id
+                break
+        if not room_uuid and all_rooms:
+            room_uuid = all_rooms[0].id
+
+    if room_uuid:
+        tool_params["room_id"] = str(room_uuid)
+        new_rec = AIRecommendation(
+            id=rec_id,
+            room_id=room_uuid,
+            tool_name=req.tool_name,
+            tool_params=tool_params,
+            reason=req.reason,
+            confidence=0.95,
+            urgency="high",
+            status="approved" if req.action == "approve" else "rejected",
+            reviewed_by=current_user.id,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db.add(new_rec)
+        try:
+            await db.commit()
+        except Exception as e:
+            logger.warning("Không thể lưu direct recommendation vào DB: %s", e)
+
+    exec_result = None
+    if req.action == "approve":
+        exec_result = await dispatch_tool_execution(
+            rec_id=rec_id,
+            room_id=room_uuid,
+            tool_name=req.tool_name,
+            tool_params=tool_params,
+            reason=req.reason,
+            operator=current_user.username,
+            is_auto=False,
+        )
+
+    return {
+        "success": True,
+        "recommendation_id": str(rec_id),
+        "status": "approved" if req.action == "approve" else "rejected",
+        "execution_result": exec_result,
+    }
 
 
 class SimulateAlertRequest(BaseModel):

@@ -146,6 +146,27 @@ async def dispatch_tool_execution(
             logger.error("Không thể kết nối sang Edge Gateway (%s): %s", execute_url, exc)
             result_summary["edge_status"] = f"connection_failed: {str(exc)}"
 
+        # Phát trực tiếp lệnh điều khiển actuator sang Mosquitto MQTT
+        try:
+            from app.websocket.mqtt_bridge import publish_mqtt_message
+            import uuid as _uuid
+            mqtt_topic = f"smartcampus/v1/command/room/{room_id_str}"
+            mqtt_payload = {
+                "message_id": str(_uuid.uuid4()),
+                "source_timestamp": datetime.now(timezone.utc).isoformat(),
+                "payload": {
+                    "room_id": room_id_str,
+                    "command_type": command_type,
+                    "command_value": command_value,
+                    "reason": edge_payload["reason"],
+                    "source": edge_payload["source"],
+                },
+            }
+            await publish_mqtt_message(mqtt_topic, mqtt_payload)
+            logger.info("Đã phát lệnh điều khiển actuator trực tiếp tới MQTT %s: %s", mqtt_topic, mqtt_payload)
+        except Exception as mq_err:
+            logger.warning("Không thể phát MQTT trực tiếp cho actuator: %s", mq_err)
+
     # Broadcast sự kiện tới toàn bộ client qua WebSocket
     ws_payload = {
         "type": "recommendation_executed",

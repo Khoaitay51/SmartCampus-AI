@@ -35,7 +35,8 @@ class ActuatorClient:
         Edge endpoint: POST /api/commands/room/execute
         Payload: {room_id, command_type, command_value, reason, source}
         """
-        url = f"{self.base_url}/api/commands/room/execute"
+        b_url = self.base_url.rstrip("/")
+        url = f"{b_url}/commands/room/execute" if b_url.endswith("/api") else f"{b_url}/api/commands/room/execute"
 
         # Chuẩn hóa command_type và command_value từ tool call args
         command_type = (

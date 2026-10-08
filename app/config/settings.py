@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = Field(default=768, description="Số chiều vector (768 với nomic-embed-text, 1024 với voyage-3)")
 
     # gateway/
-    BACKEND_BASE_URL: str = Field(default="http://localhost:8000/api", description="Base URL của SmartCampus backend chính")
-    GATEWAY_BASE_URL: str = Field(default="http://localhost:8000/api", description="Base URL kết nối Edge Gateway API")
+    BACKEND_BASE_URL: str = Field(default="http://smartcampus-api:8000", description="Base URL của SmartCampus backend chính")
+    GATEWAY_BASE_URL: str = Field(default="http://smartcampus-api:8000/api", description="Base URL kết nối Edge Gateway API")
     BACKEND_SERVICE_TOKEN: str = Field(default="", description="Service token agent dùng để gọi backend")
     USE_MOCK_RAG: bool = Field(default=False, description="Tự động dùng Mock Data cho RAG tools khi backend offline")
 

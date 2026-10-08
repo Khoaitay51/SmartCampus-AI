@@ -31,7 +31,9 @@ router = APIRouter(prefix="/api/telemetry", tags=["Telemetry"])
 
 def _fetch_summaries_from_edge(limit: int = 50) -> list[dict[str, Any]]:
     """Gọi Edge Gateway API /tool/reasoning/summaries để lấy dữ liệu từ TimescaleDB."""
-    url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/tool/reasoning/summaries?limit={limit}"
+    base_url = settings.BACKEND_BASE_URL.rstrip('/')
+    edge_path = "/tool/reasoning/summaries" if base_url.endswith("/api") else "/api/tool/reasoning/summaries"
+    url = f"{base_url}{edge_path}?limit={limit}"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "SmartCampus-Telemetry/1.0"})
         with urllib.request.urlopen(req, timeout=3.0) as resp:
@@ -134,13 +136,31 @@ async def get_room_telemetry_stats(
         }
 
     room_obj = None
+    target_uuid = None
     try:
-        room_uuid = uuid.UUID(room_id)
-        res = await db.execute(select(Room).where(Room.id == room_uuid))
-        room_obj = res.scalar_one_or_none()
+        target_uuid = uuid.UUID(room_id)
     except Exception:
+        if room_id in ("room1", "1", "room-402"):
+            target_uuid = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        elif room_id in ("room2", "2", "corridor", "hanhlang"):
+            target_uuid = uuid.UUID("11111111-1111-1111-1111-111111111110")
+        else:
+            try:
+                target_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, room_id)
+            except Exception:
+                pass
+
+    if target_uuid:
+        res = await db.execute(select(Room).where(Room.id == target_uuid))
+        room_obj = res.scalar_one_or_none()
+
+    if not room_obj:
         res = await db.execute(select(Room).where(Room.name == room_id))
         room_obj = res.scalar_one_or_none()
+
+    if not room_obj:
+        res = await db.execute(select(Room).where(Room.name.ilike(f"%{room_id}%")))
+        room_obj = res.scalars().first()
 
     occ = room_obj.occupancy if room_obj and room_obj.occupancy is not None else 0
     total_in = max(occ, occ + 8) if occ > 0 else 0
