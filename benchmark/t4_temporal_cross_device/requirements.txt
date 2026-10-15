@@ -1,0 +1,10 @@
+# Requirements cho T4 Temporal & Cross-Device Benchmark
+# SmartCampus BMS
+
+# HTTP client để gọi agent endpoint
+requests>=2.31.0
+
+# Không có thêm phụ thuộc bên ngoài —
+# Benchmark chỉ dùng stdlib Python 3.11+:
+#   json, re, sys, os, time, uuid, argparse, logging,
+#   datetime, pathlib, typing, traceback

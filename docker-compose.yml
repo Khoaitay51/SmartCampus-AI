@@ -1,3 +1,5 @@
+name: ai
+
 services:
   # ---------------------------------------------------------------------------
   # 1. PostgreSQL với pgvector (Vector Database & Relational Database)

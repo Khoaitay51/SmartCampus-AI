@@ -20,7 +20,7 @@ class EventType(str, Enum):
 
 class EventPayload(BaseModel):
     event_id: UUID
-    event_type: EventType
+    event_type: EventType | str
     room_id: UUID
     timestamp: datetime
     event_data: dict[str, Any] = Field(default_factory=dict)

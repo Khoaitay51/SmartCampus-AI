@@ -74,12 +74,15 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(health.router, tags=["Health"])
 app.include_router(evaluate.router, tags=["Evaluate"])
+app.include_router(evaluate.router, prefix="/api", tags=["Evaluate"])
 app.include_router(feedback.router, tags=["Feedback"])
 
 # ---------------------------------------------------------------------------
 # Routers — Auth & RBAC
 # ---------------------------------------------------------------------------
 app.include_router(auth_router.router)
+# Backward-compatibility alias for Swagger UI / clients requesting /auth/login
+app.add_api_route("/auth/login", auth_router.login, methods=["POST"], include_in_schema=False)
 
 # ---------------------------------------------------------------------------
 # Routers — Campus Management API
