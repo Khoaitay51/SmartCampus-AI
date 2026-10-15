@@ -193,8 +193,9 @@ class ReActXenAgent:
             event.model_dump_json(), context.model_dump_json()
         )
 
+        event_type_str = getattr(event.event_type, "value", str(event.event_type))
         context_text_for_ltm = (
-            f"Event: {event.event_type.value}. "
+            f"Event: {event_type_str}. "
             f"Context: {event.operational_context}"
         )
         past_experience_str = await retrieve_past_experience(context_text_for_ltm)

@@ -443,9 +443,10 @@ def find_action_policy_violations(
     if tool_name is None:
         return []
     policy = action_policy_for(event_type, context)
+    event_val = getattr(event_type, "value", str(event_type))
     if tool_name not in policy.candidate_tools:
         return [
-            f"'{tool_name}' không nằm trong candidate action tools cho event={event_type.value} "
+            f"'{tool_name}' không nằm trong candidate action tools cho event={event_val} "
             f"(cho phép: {policy.candidate_tools}; xem EMERGENCY_ACTION_POLICY nếu context đang khẩn cấp)."
         ]
     return []
@@ -455,8 +456,9 @@ def build_action_tool_prompt(event_type: EventType) -> str:
     """Prompt hướng dẫn chọn action tool — chèn SAU khi agent đã thu thập đủ bằng
     chứng RAG và xác nhận sự kiện, NGAY TRƯỚC khi viết final_json ở bước 'finish'."""
     policy = EVENT_ACTION_POLICY.get(event_type, DEFAULT_ACTION_POLICY)
+    event_val = getattr(event_type, "value", str(event_type))
     lines = [
-        f"## Action Tool Policy cho event_type='{event_type.value}' "
+        f"## Action Tool Policy cho event_type='{event_val}' "
         f"(áp dụng SAU KHI đã gọi đủ RAG bắt buộc và xác nhận sự kiện):",
         f"Candidate tools (được phép cân nhắc): {', '.join(policy.candidate_tools)}",
     ]
@@ -586,7 +588,8 @@ def build_analysis_prompt(event_type: EventType) -> str:
     hint = EVENT_ANALYSIS_HINTS.get(
         event_type, "Không có hướng dẫn riêng cho loại sự kiện này — phân tích tổng quát dựa trên context."
     )
-    return f"## Hướng dẫn phân tích cho event_type='{event_type.value}':\n{hint}\n"
+    event_val = getattr(event_type, "value", str(event_type))
+    return f"## Hướng dẫn phân tích cho event_type='{event_val}':\n{hint}\n"
 
 
 # ---------------------------------------------------------------------------
@@ -614,8 +617,9 @@ def build_mandatory_rag_prompt(event_type: EventType) -> str:
     mandatory = [r for r in reqs if r.mandatory]
     optional = [r for r in reqs if not r.mandatory]
 
+    event_val = getattr(event_type, "value", str(event_type))
     lines = [
-        f"## RAG tool BẮT BUỘC cho event_type='{event_type.value}':",
+        f"## RAG tool BẮT BUỘC cho event_type='{event_val}':",
         f"Bạn PHẢI gọi ít nhất tool số 1 (Core Tool) trước khi 'finish'. "
         f"Sau khi gọi Core Tool, nếu bằng chứng đã đủ kết luận → FINISH NGAY (Early Exit hợp lệ).",
     ]

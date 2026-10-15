@@ -14,3 +14,9 @@ output/.env
 output/*
 !output/.gitkeep
 *.db
+
+# Benchmark transient runs (keep only latest_run.json, evaluation_summary.json, evaluation_report.md)
+benchmark/**/results/run_*.json
+benchmark/**/results/raw_results_*.json
+benchmark/**/results/evaluation_report_*T*.json
+
