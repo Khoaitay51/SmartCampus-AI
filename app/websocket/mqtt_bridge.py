@@ -398,21 +398,56 @@ async def _run_agent_task(
     if response.recommendation and not response.skip:
         from app.campus.hitl import is_hitl_enabled, dispatch_tool_execution
         rec_params = getattr(response.recommendation, "tool_params", getattr(response.recommendation, "parameters", {}))
-        
+        tool_name = str(response.recommendation.tool_name or "").strip()
+        tool_name_lower = tool_name.lower()
+        confidence = float(response.recommendation.confidence or 0.0)
+
         hitl_active = is_hitl_enabled()
-        status_init = "pending" if hitl_active else "auto_approved"
+
+        # TIERED AUTONOMY SAFETY POLICY:
+        # 1. Tier-2 Critical Safety Tools (Cửa / FSM / Chuông): TUYỆT ĐỐI không để Autopilot tự chạy!
+        TIER2_CRITICAL_TOOLS = {"set_door", "door_control", "set_mode", "mode_control", "trigger_buzzer", "buzzer_control"}
+        is_critical = tool_name_lower in TIER2_CRITICAL_TOOLS
+
+        # 2. Ngưỡng tin cậy tối thiểu cho Autopilot đối với các lệnh đảo nghịch được (Tier-1: quạt, đèn)
+        AUTOPILOT_MIN_CONFIDENCE = 0.8
+        has_min_conf = confidence >= AUTOPILOT_MIN_CONFIDENCE
+
+        # Quyết định xem có được phép tự động thi hành qua Autopilot hay không
+        if hitl_active:
+            can_autopilot = False
+            status_init = "pending"
+            review_notes = None
+            requires_conf = True
+        elif is_critical:
+            can_autopilot = False
+            status_init = "pending"
+            review_notes = f"🔒 [CHẶN AUTOPILOT]: Tool '{tool_name}' là hành động nhạy cảm an ninh (Cửa/FSM), bắt buộc Quản trị viên duyệt qua HITL."
+            requires_conf = True
+            logger.warning("🚨 [TIERED AUTONOMY] Chặn Autopilot đối với tool nhạy cảm: '%s'. Buộc chuyển sang HITL approval.", tool_name)
+        elif not has_min_conf:
+            can_autopilot = False
+            status_init = "pending"
+            review_notes = f"⚠️ [CHẶN AUTOPILOT]: Độ tin cậy AI ({confidence:.2f}) chưa đạt ngưỡng an toàn ({AUTOPILOT_MIN_CONFIDENCE}), cần con người xác nhận."
+            requires_conf = True
+            logger.info("ℹ️ [TIERED AUTONOMY] Tool '%s' có confidence %.2f < %.2f. Chuyển sang HITL approval.", tool_name, confidence, AUTOPILOT_MIN_CONFIDENCE)
+        else:
+            can_autopilot = True
+            status_init = "auto_approved"
+            review_notes = f"⚡ Tự động phê duyệt qua Autopilot (Tier-1 Reversible Tool, Conf: {confidence:.2f} >= {AUTOPILOT_MIN_CONFIDENCE})"
+            requires_conf = False
 
         rec_obj = AIRecommendation(
             event_id=str(event.event_id),
             room_id=room_uuid,
-            tool_name=response.recommendation.tool_name,
+            tool_name=tool_name,
             tool_params=rec_params,
             reason=response.recommendation.reason,
-            confidence=response.recommendation.confidence,
+            confidence=confidence,
             urgency=response.recommendation.urgency,
             status=status_init,
-            review_notes="Tự động phê duyệt và thực thi qua chế độ Autopilot" if not hitl_active else None,
-            reviewed_at=datetime.now(timezone.utc) if not hitl_active else None,
+            review_notes=review_notes,
+            reviewed_at=datetime.now(timezone.utc) if can_autopilot else None,
         )
         async with get_db_context() as db:
             db.add(rec_obj)
@@ -427,15 +462,15 @@ async def _run_agent_task(
             "event_id": str(event.event_id),
             "room_id": str(room_uuid),
             "room_name": room_name,
-            "tool_name": response.recommendation.tool_name,
+            "tool_name": tool_name,
             "tool_params": rec_params,
             "reason": response.recommendation.reason,
-            "confidence": response.recommendation.confidence,
+            "confidence": confidence,
             "urgency": response.recommendation.urgency,
             "analysis": response.analysis,
             "is_fallback": response.is_fallback,
-            "requires_confirmation": hitl_active,
-            "auto_executed": not hitl_active,
+            "requires_confirmation": requires_conf,
+            "auto_executed": can_autopilot,
             "edge_rest_endpoint": f"{settings.BACKEND_BASE_URL.rstrip('/')}/commands/room/execute" if settings.BACKEND_BASE_URL.rstrip('/').endswith("/api") else f"{settings.BACKEND_BASE_URL.rstrip('/')}/api/commands/room/execute",
         }
 
@@ -443,7 +478,7 @@ async def _run_agent_task(
         await ws_manager.broadcast(rec_data)
 
         # Nếu tool là send_alert, gửi kèm event system_alert để Web hiển thị ngay Pop up cảnh báo
-        if str(response.recommendation.tool_name).lower().strip() == "send_alert":
+        if tool_name_lower == "send_alert":
             await ws_manager.broadcast({
                 "type": "system_alert",
                 "alert": {
@@ -456,7 +491,7 @@ async def _run_agent_task(
                     "message": rec_params.get("message") or response.recommendation.reason or "Cảnh báo khẩn cấp từ AI Agent",
                     "level": str(rec_params.get("level", "warning")).lower(),
                     "reason": response.recommendation.reason,
-                    "confidence": response.recommendation.confidence,
+                    "confidence": confidence,
                     "urgency": response.recommendation.urgency,
                     "status": status_init,
                     "hitl_enabled": hitl_active,
@@ -472,13 +507,13 @@ async def _run_agent_task(
             except Exception as pe:
                 logger.warning("Không thể publish AI recommendation lên MQTT: %s", pe)
 
-        # Nếu chế độ HITL tắt -> Tự động thực thi lệnh ngay lập tức!
-        if not hitl_active:
-            logger.info("⚡ [AUTOPILOT] HITL đang tắt. Tự động thực thi tool '%s' xuống Edge Gateway...", response.recommendation.tool_name)
+        # Nếu được phép tự động thi hành qua Autopilot (Tier-1 + Conf >= 0.8 + Autopilot ON)
+        if can_autopilot:
+            logger.info("⚡ [AUTOPILOT EXEC] Tự động thực thi tool '%s' (Conf: %.2f) xuống Edge Gateway...", tool_name, confidence)
             await dispatch_tool_execution(
                 rec_id=rec_id_str,
                 room_id=room_uuid,
-                tool_name=response.recommendation.tool_name,
+                tool_name=tool_name,
                 tool_params=rec_params,
                 reason=response.recommendation.reason or "Auto-pilot execution without manual approval",
                 operator="AI_AUTOPILOT",
