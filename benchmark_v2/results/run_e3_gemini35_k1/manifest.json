@@ -1,0 +1,28 @@
+{
+  "run_id": "run_e3_gemini35_k1",
+  "generated_at": "2026-10-27T15:21:17.091951+00:00",
+  "git_head": "680c4358e4de278960810e0308f4e2d03c1aba06",
+  "git_working_tree_dirty": true,
+  "app_diff_sha256": "0f615059c4a5228b78927244301a37513a461c4e3596447b51a9a5c76a4616fe",
+  "app_untracked_sha256": {
+    "app/config/clock.py": "5bdb63af7fe2940569149ae03eb1534a1fbbdf50237c714a5acff5f7eb746536",
+    "app/gateway/data_stealing.py": "587519e3a9eee02033240ea156aa6ea7519e5564a50fff5f72b4a359a89c007e"
+  },
+  "frozen_dataset_hashes_verified": true,
+  "result_files_sha256": {
+    "raw_runs.jsonl": "be51a9d5ed83eaa6ad129b6e9909625c2df45ab206e3127bfb7dcbb8c2878c00",
+    "summary.json": "ed06a2c83db81b652c69d6d9a0f6c21bf1c43f223f3c6ce769f663671291ee59",
+    "report.md": "b0a7e25e4dd102a4fbdebccdf2c3ba083330bb398e8e1f22e3d0982c0bd657b4"
+  },
+  "tool_files_sha256": {
+    "evaluator/evaluate_v2.py": "98d16d8636a633620954732371b9d4f9f47dfc4734ff766aa24cdfb2cfaafba2",
+    "runner/run_benchmark.py": "85399a4180329e6c69b911021d4517b65195a53456935c54c68849c1199e484a",
+    "env/env_manifest.json": "907444e2090676f0dfc800bf97f709978ae3e91e4b597cb8c0bfc5c927bcf8d3"
+  },
+  "command": "python benchmark_v2/runner/run_benchmark.py --track all --run-id run_e3_gemini35_k1",
+  "model": "gemini-3.5-flash-lite",
+  "k": 1,
+  "temperature": 0.0,
+  "timeout_s": 60,
+  "disable_fallback": true
+}

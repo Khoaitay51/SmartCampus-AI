@@ -97,6 +97,14 @@ async def evaluate_event(payload: dict[str, Any]) -> AgentResponse:
 
     và trả về khuyến nghị điều khiển thiết bị (AgentResponse).
     """
+    # 0. Thiết lập reference_time nếu có truyền trong payload (QĐ-7: Clock injection per request)
+    from app.config.clock import set_request_reference_time
+    req_ref_time = payload.get("reference_time")
+    if not req_ref_time and isinstance(payload.get("event"), dict):
+        req_ref_time = payload["event"].get("reference_time")
+    if req_ref_time:
+        set_request_reference_time(req_ref_time)
+
     # 1. Validate input (hỗ trợ cả định dạng phẳng lẫn lồng nhau)
     try:
         if "event" in payload and isinstance(payload["event"], dict):

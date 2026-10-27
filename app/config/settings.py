@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # llm
     LLM_PROVIDER: str = Field(default="gemini", description="Provider chính: 'gemini' hoặc 'ollama'")
     GEMINI_API_KEY: str = Field(default="", description="API key cho Google Gemini")
-    AGENT: str = Field(default="gemini-3.6-flash", description="Model Gemini dùng cho ReAct/Review/Reflect")
+    AGENT: str = Field(default="gemini-3.5-flash-lite", description="Model Gemini dùng cho ReAct/Review/Reflect")
     
     # Ollama Local SLM & Embeddings
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Base URL cho Ollama service")
@@ -68,9 +68,44 @@ class Settings(BaseSettings):
     MQTT_PASSWORD: str = Field(default="", description="MQTT password (optional)")
     MQTT_CLIENT_ID: str = Field(default="smartcampus-fastapi-bridge", description="MQTT client identifier")
 
-    @field_validator("BACKEND_BASE_URL")
+    # Benchmark v2 Feature Flags (QĐ-7, QĐ-9; mặc định TẮT an toàn)
+    BENCHMARK_MODE: bool = Field(default=False, description="Kích hoạt chế độ Benchmark v2")
+    BENCHMARK_REFERENCE_TIME: str | None = Field(
+        default=None,
+        description="Mốc thời gian tham chiếu T0 cố định dạng ISO 8601 (vd: 2026-11-02T09:15:00+07:00)",
+    )
+    BENCHMARK_DB_SCHEMA: str = Field(default="bv2", description="Schema prefix riêng cho benchmark (QĐ-9)")
+
+    @field_validator("OLLAMA_BASE_URL")
     @classmethod
-    def base_url_no_trailing_slash(cls, v: str) -> str:
+    def resolve_ollama_host(cls, v: str) -> str:
+        if "http://ollama:" in v:
+            import socket
+            try:
+                socket.gethostbyname("ollama")
+            except Exception:
+                return v.replace("http://ollama:", "http://localhost:")
+        return v.rstrip("/")
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def resolve_db_host(cls, v: str) -> str:
+        if "@db:5432" in v:
+            import socket
+            try:
+                socket.gethostbyname("db")
+            except Exception:
+                return v.replace("@db:5432", "@localhost:5432")
+        return v
+
+    @field_validator("BACKEND_BASE_URL", "GATEWAY_BASE_URL")
+    @classmethod
+    def resolve_gateway_host(cls, v: str | None) -> str | None:
+        if not v:
+            return v
+        import os
+        if "host.docker.internal" in v and not os.path.exists("/.dockerenv"):
+            v = v.replace("host.docker.internal", "localhost")
         return v.rstrip("/")
 
 

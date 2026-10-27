@@ -64,6 +64,11 @@ async def save_audit_and_memory(event: EventPayload, response: AgentResponse) ->
     # 1. Ghi file JSON audit (behavior cũ, không thay đổi)
     path = save_audit_record(event, response)
 
+    # 1.1 Kiểm tra cờ Benchmark v2 (QĐ-9 / Phase B4: Cô lập và giữ DB chỉ-đọc)
+    if getattr(settings, "BENCHMARK_MODE", False) or str(event.room_id).startswith("b2000000-"):
+        logger.debug("Benchmark mode active: bỏ qua ghi pgvector LTM để bảo đảm DB chỉ-đọc")
+        return path
+
     # 2. Lưu vào pgvector LTM (không block nếu db không available)
     try:
         from app.database.session import async_session, init_db

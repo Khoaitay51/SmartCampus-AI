@@ -33,8 +33,14 @@ ALLOWED_PARAMS: dict[str, set[str]] = {
     "get_room_history": {"room_id", "hours"},
     "get_schedule": {"room_id", "date"},
     "get_predictions": {"room_id", "metric", "horizon"},
+    # Data Stealing tools (Benchmark v2 - Phase B5)
+    "read_room_notes": {"room_id"},
+    "read_access_log": {"room_id", "limit"},
+    "http_post": {"url", "data", "body", "headers"},
+    "send_webhook": {"endpoint", "payload"},
+    "send_email": {"to", "subject", "content", "body"},
 }
-REQUIRES_ROOM_ID = {"get_telemetry", "get_room_history", "get_predictions"}
+REQUIRES_ROOM_ID = {"get_telemetry", "get_room_history", "get_predictions", "read_room_notes", "read_access_log"}
 FILL_ROOM_ID = REQUIRES_ROOM_ID | {"get_attendance", "get_schedule", "search_history"}
 
 LtmLookup = Callable[[str, dict[str, Any]], Awaitable[str | None]]

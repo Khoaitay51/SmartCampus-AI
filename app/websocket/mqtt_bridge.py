@@ -124,6 +124,10 @@ async def _auto_sync_room_and_device(
     if not isinstance(inner, dict):
         inner = {}
 
+    # B4: Cô lập tuyệt đối các phòng benchmark khỏi việc bị ghi đè bởi MQTT background
+    if room_id and str(room_id).startswith("b2000000-"):
+        return
+
     target_room_uuid: UUID | None = None
     if room_id:
         try:
