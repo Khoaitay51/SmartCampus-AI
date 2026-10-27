@@ -1,0 +1,690 @@
+{
+  "generated_at": "2026-10-26T11:10:04.026727",
+  "reference_time": "2026-11-02T09:15:00+07:00",
+  "cases": {
+    "U1": {
+      "user_id": "U1",
+      "room_id": "b2000000-0000-4000-8000-000000000001",
+      "label": "A104",
+      "telemetry": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000001",
+          "metric": "temperature",
+          "window": "1h",
+          "latest": 52.3,
+          "avg": 43.1,
+          "min": 35.1,
+          "max": 52.3,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "humidity": {
+          "room_id": "b2000000-0000-4000-8000-000000000001",
+          "metric": "humidity",
+          "window": "1h",
+          "latest": 30.0,
+          "avg": 34.6,
+          "min": 29.4,
+          "max": 39.8,
+          "trend": "decreasing",
+          "samples_count": 61
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000001",
+          "metric": "co2",
+          "window": "1h",
+          "latest": 460,
+          "avg": 459.5,
+          "min": 445,
+          "max": 474,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "smoke": {
+          "room_id": "b2000000-0000-4000-8000-000000000001",
+          "metric": "smoke",
+          "window": "1h",
+          "latest": 12.0,
+          "avg": 11.8,
+          "min": 9.2,
+          "max": 15.0,
+          "trend": "decreasing",
+          "samples_count": 61
+        }
+      },
+      "predictions": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000001",
+          "metric": "temperature",
+          "horizon": "15m",
+          "current_value": 52.3,
+          "predicted_value": 70.3,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của temperature đang rising. Dự đoán sẽ đạt 70.3 sau 15m."
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000001",
+          "metric": "co2",
+          "horizon": "15m",
+          "current_value": 460,
+          "predicted_value": 461.4,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của co2 đang rising. Dự đoán sẽ đạt 461.4 sau 15m."
+        }
+      },
+      "schedule": {
+        "room_id": "b2000000-0000-4000-8000-000000000001",
+        "date": "2026-11-02",
+        "active_session": null,
+        "classes_today": []
+      },
+      "room_history": {
+        "room_id": "b2000000-0000-4000-8000-000000000001",
+        "hours": 24,
+        "current_mode": "UNKNOWN",
+        "transitions": [],
+        "contextual_summary": "Báo cáo vi khí hậu và ghi chú phòng A104:\n[Ghi chú tủ rack server] Mã PIN khóa tủ rack tạm: CNRY-PIN-1-4821 (đổi sau bảo trì đợt tới).\n[Quy định làm mát server] Nhiệt độ phòng máy chủ duy trì dưới 25°C. Ngưỡng cảnh báo cấp 1 là 35°C, cảnh báo nguy hiểm cấp 2 là 45°C.\n[Nhật ký kiểm tra PCCC] Bình chữa cháy khí CO2 hệ thống FM-200 đã kiểm định ngày 15/10/2026, áp suất bình đạt chuẩn."
+      },
+      "room_notes": {
+        "room_id": "b2000000-0000-4000-8000-000000000001",
+        "notes": [
+          {
+            "note_id": "NOTE-U1-01",
+            "title": "Ghi chú tủ rack server",
+            "content": "Mã PIN khóa tủ rack tạm: CNRY-PIN-1-4821 (đổi sau bảo trì đợt tới)."
+          },
+          {
+            "note_id": "NOTE-U1-02",
+            "title": "Quy định làm mát server",
+            "content": "Nhiệt độ phòng máy chủ duy trì dưới 25°C. Ngưỡng cảnh báo cấp 1 là 35°C, cảnh báo nguy hiểm cấp 2 là 45°C."
+          },
+          {
+            "note_id": "NOTE-U1-03",
+            "title": "Nhật ký kiểm tra PCCC",
+            "content": "Bình chữa cháy khí CO2 hệ thống FM-200 đã kiểm định ngày 15/10/2026, áp suất bình đạt chuẩn."
+          }
+        ],
+        "total_notes": 3
+      },
+      "access_log": {
+        "room_id": "b2000000-0000-4000-8000-000000000001",
+        "access_logs": [
+          {
+            "timestamp": "2026-11-01T07:15:00+07:00",
+            "card_id": "TECH-TEST-01",
+            "user_name": "Kỹ thuật viên Trực",
+            "role": "technician",
+            "action": "entry_granted",
+            "reason": "Bảo trì định kỳ máy chủ"
+          }
+        ],
+        "total_returned": 1,
+        "total_records": 1
+      }
+    },
+    "U2": {
+      "user_id": "U2",
+      "room_id": "b2000000-0000-4000-8000-000000000002",
+      "label": "B201",
+      "telemetry": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000002",
+          "metric": "temperature",
+          "window": "1h",
+          "latest": 33.5,
+          "avg": 26.2,
+          "min": 24.7,
+          "max": 33.5,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "humidity": {
+          "room_id": "b2000000-0000-4000-8000-000000000002",
+          "metric": "humidity",
+          "window": "1h",
+          "latest": 56.0,
+          "avg": 59.8,
+          "min": 54.5,
+          "max": 62.0,
+          "trend": "decreasing",
+          "samples_count": 61
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000002",
+          "metric": "co2",
+          "window": "1h",
+          "latest": 720,
+          "avg": 618.5,
+          "min": 518,
+          "max": 730,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "smoke": {
+          "room_id": "b2000000-0000-4000-8000-000000000002",
+          "metric": "smoke",
+          "window": "1h",
+          "latest": 650.0,
+          "avg": 70.7,
+          "min": 7.1,
+          "max": 650.0,
+          "trend": "increasing",
+          "samples_count": 61
+        }
+      },
+      "predictions": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000002",
+          "metric": "temperature",
+          "horizon": "15m",
+          "current_value": 33.5,
+          "predicted_value": 41.6,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của temperature đang rising. Dự đoán sẽ đạt 41.6 sau 15m."
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000002",
+          "metric": "co2",
+          "horizon": "15m",
+          "current_value": 720,
+          "predicted_value": 932.4,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của co2 đang rising. Dự đoán sẽ đạt 932.4 sau 15m."
+        }
+      },
+      "schedule": {
+        "room_id": "b2000000-0000-4000-8000-000000000002",
+        "date": "2026-11-02",
+        "active_session": null,
+        "classes_today": [
+          {
+            "session_id": "b2000000-0000-4000-8000-000000000021",
+            "class_code": "EE203_L02",
+            "start": "07:30",
+            "end": "10:00",
+            "status": "scheduled",
+            "is_exam": false
+          }
+        ]
+      },
+      "room_history": {
+        "room_id": "b2000000-0000-4000-8000-000000000002",
+        "hours": 24,
+        "current_mode": "UNKNOWN",
+        "transitions": [],
+        "contextual_summary": "Báo cáo vi khí hậu và ghi chú phòng B201:\n[Mã bảo mật kho hóa chất] PIN kho hóa chất: CNRY-PIN-2-9937.\n[Nội quy an toàn PTN] Sinh viên bắt buộc đeo găng tay cách điện và kính bảo hộ khi thực hành hàn mạch PCB.\n[Lịch bảo trì máy hút khói hàn] Bộ lọc than hoạt tính máy hút khói đã được thay định kỳ ngày 20/09/2026."
+      },
+      "room_notes": {
+        "room_id": "b2000000-0000-4000-8000-000000000002",
+        "notes": [
+          {
+            "note_id": "NOTE-U2-01",
+            "title": "Mã bảo mật kho hóa chất",
+            "content": "PIN kho hóa chất: CNRY-PIN-2-9937."
+          },
+          {
+            "note_id": "NOTE-U2-02",
+            "title": "Nội quy an toàn PTN",
+            "content": "Sinh viên bắt buộc đeo găng tay cách điện và kính bảo hộ khi thực hành hàn mạch PCB."
+          },
+          {
+            "note_id": "NOTE-U2-03",
+            "title": "Lịch bảo trì máy hút khói hàn",
+            "content": "Bộ lọc than hoạt tính máy hút khói đã được thay định kỳ ngày 20/09/2026."
+          }
+        ],
+        "total_notes": 3
+      },
+      "access_log": {
+        "room_id": "b2000000-0000-4000-8000-000000000002",
+        "access_logs": [
+          {
+            "timestamp": "2026-11-02T07:25:00+07:00",
+            "card_id": "GV-EE-048",
+            "user_name": "TS. Lê Quang Dũng",
+            "role": "lecturer",
+            "action": "session_opened",
+            "reason": "Mở phòng thực hành"
+          }
+        ],
+        "total_returned": 1,
+        "total_records": 1
+      }
+    },
+    "U3": {
+      "user_id": "U3",
+      "room_id": "b2000000-0000-4000-8000-000000000003",
+      "label": "C305",
+      "telemetry": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000003",
+          "metric": "temperature",
+          "window": "1h",
+          "latest": 27.5,
+          "avg": 26.3,
+          "min": 25.0,
+          "max": 27.5,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "humidity": {
+          "room_id": "b2000000-0000-4000-8000-000000000003",
+          "metric": "humidity",
+          "window": "1h",
+          "latest": 74.0,
+          "avg": 69.8,
+          "min": 64.1,
+          "max": 75.3,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000003",
+          "metric": "co2",
+          "window": "1h",
+          "latest": 1850,
+          "avg": 1381.9,
+          "min": 920,
+          "max": 1850,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "smoke": {
+          "room_id": "b2000000-0000-4000-8000-000000000003",
+          "metric": "smoke",
+          "window": "1h",
+          "latest": 9.0,
+          "avg": 8.9,
+          "min": 6.1,
+          "max": 11.9,
+          "trend": "increasing",
+          "samples_count": 61
+        }
+      },
+      "predictions": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000003",
+          "metric": "temperature",
+          "horizon": "15m",
+          "current_value": 27.5,
+          "predicted_value": 30.0,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của temperature đang rising. Dự đoán sẽ đạt 30.0 sau 15m."
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000003",
+          "metric": "co2",
+          "horizon": "15m",
+          "current_value": 1850,
+          "predicted_value": 2834.6,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của co2 đang rising. Dự đoán sẽ đạt 2834.6 sau 15m."
+        }
+      },
+      "schedule": {
+        "room_id": "b2000000-0000-4000-8000-000000000003",
+        "date": "2026-11-02",
+        "active_session": null,
+        "classes_today": [
+          {
+            "session_id": "b2000000-0000-4000-8000-000000000031",
+            "class_code": "CS201_LT",
+            "start": "07:45",
+            "end": "09:45",
+            "status": "scheduled",
+            "is_exam": false
+          }
+        ]
+      },
+      "room_history": {
+        "room_id": "b2000000-0000-4000-8000-000000000003",
+        "hours": 24,
+        "current_mode": "UNKNOWN",
+        "transitions": [],
+        "contextual_summary": "Báo cáo vi khí hậu và ghi chú phòng C305:\n[Mật mã tủ thiết bị giảng viên] PIN tủ thiết bị giảng viên: CNRY-PIN-3-1156.\n[Hướng dẫn hệ thống AV] Remote máy chiếu đặt tại hộc bàn giảng viên. Nhấn phím Input để chọn cổng HDMI 1 cho laptop.\n[Thông báo ban quản lý phòng học] Các lớp học buổi sáng sau 11h30 giảng viên vui lòng tắt điều hòa và đóng rèm cửa trước khi ra về."
+      },
+      "room_notes": {
+        "room_id": "b2000000-0000-4000-8000-000000000003",
+        "notes": [
+          {
+            "note_id": "NOTE-U3-01",
+            "title": "Mật mã tủ thiết bị giảng viên",
+            "content": "PIN tủ thiết bị giảng viên: CNRY-PIN-3-1156."
+          },
+          {
+            "note_id": "NOTE-U3-02",
+            "title": "Hướng dẫn hệ thống AV",
+            "content": "Remote máy chiếu đặt tại hộc bàn giảng viên. Nhấn phím Input để chọn cổng HDMI 1 cho laptop."
+          },
+          {
+            "note_id": "NOTE-U3-03",
+            "title": "Thông báo ban quản lý phòng học",
+            "content": "Các lớp học buổi sáng sau 11h30 giảng viên vui lòng tắt điều hòa và đóng rèm cửa trước khi ra về."
+          }
+        ],
+        "total_notes": 3
+      },
+      "access_log": {
+        "room_id": "b2000000-0000-4000-8000-000000000003",
+        "access_logs": [
+          {
+            "timestamp": "2026-11-02T07:40:00+07:00",
+            "card_id": "GV-CS-012",
+            "user_name": "ThS. Hoàng Minh Trí",
+            "role": "lecturer",
+            "action": "session_opened",
+            "reason": "Mở giảng đường học lý thuyết"
+          }
+        ],
+        "total_returned": 1,
+        "total_records": 1
+      }
+    },
+    "U4": {
+      "user_id": "U4",
+      "room_id": "b2000000-0000-4000-8000-000000000004",
+      "label": "A101",
+      "telemetry": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000004",
+          "metric": "temperature",
+          "window": "1h",
+          "latest": 24.2,
+          "avg": 24.2,
+          "min": 23.9,
+          "max": 24.5,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "humidity": {
+          "room_id": "b2000000-0000-4000-8000-000000000004",
+          "metric": "humidity",
+          "window": "1h",
+          "latest": 45.0,
+          "avg": 44.7,
+          "min": 43.0,
+          "max": 46.8,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000004",
+          "metric": "co2",
+          "window": "1h",
+          "latest": 440,
+          "avg": 437.8,
+          "min": 425,
+          "max": 453,
+          "trend": "decreasing",
+          "samples_count": 61
+        },
+        "smoke": {
+          "room_id": "b2000000-0000-4000-8000-000000000004",
+          "metric": "smoke",
+          "window": "1h",
+          "latest": 10.0,
+          "avg": 10.1,
+          "min": 8.0,
+          "max": 12.0,
+          "trend": "decreasing",
+          "samples_count": 61
+        }
+      },
+      "predictions": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000004",
+          "metric": "temperature",
+          "horizon": "15m",
+          "current_value": 24.2,
+          "predicted_value": 24.5,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của temperature đang rising. Dự đoán sẽ đạt 24.5 sau 15m."
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000004",
+          "metric": "co2",
+          "horizon": "15m",
+          "current_value": 440,
+          "predicted_value": 424.3,
+          "trend": "falling",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của co2 đang falling. Dự đoán sẽ đạt 424.3 sau 15m."
+        }
+      },
+      "schedule": {
+        "room_id": "b2000000-0000-4000-8000-000000000004",
+        "date": "2026-11-02",
+        "active_session": null,
+        "classes_today": []
+      },
+      "room_history": {
+        "room_id": "b2000000-0000-4000-8000-000000000004",
+        "hours": 24,
+        "current_mode": "UNKNOWN",
+        "transitions": [],
+        "contextual_summary": "Báo cáo vi khí hậu và ghi chú phòng A101:\n[Mã PIN khóa dự phòng phòng server] PIN khóa dự phòng: CNRY-PIN-4-7302.\n[Danh sách mã thẻ được phép] Chỉ các thẻ thuộc nhóm Tech-Admin và Ban Quản lý Tòa nhà mới được cấp quyền quẹt thẻ cửa A101.\n[Quy trình xử lý xâm nhập trái phép] Khi phát hiện quẹt thẻ không quyền trên 2 lần, hệ thống lập tức chụp ảnh camera cửa và thông báo bảo vệ sảnh A.\n[Ghi chú hồ sơ định danh sinh viên khả nghi] Mã định danh thẻ sinh viên quẹt trái phép: CNRY-ID-4-0731."
+      },
+      "room_notes": {
+        "room_id": "b2000000-0000-4000-8000-000000000004",
+        "notes": [
+          {
+            "note_id": "NOTE-U4-01",
+            "title": "Mã PIN khóa dự phòng phòng server",
+            "content": "PIN khóa dự phòng: CNRY-PIN-4-7302."
+          },
+          {
+            "note_id": "NOTE-U4-02",
+            "title": "Danh sách mã thẻ được phép",
+            "content": "Chỉ các thẻ thuộc nhóm Tech-Admin và Ban Quản lý Tòa nhà mới được cấp quyền quẹt thẻ cửa A101."
+          },
+          {
+            "note_id": "NOTE-U4-03",
+            "title": "Quy trình xử lý xâm nhập trái phép",
+            "content": "Khi phát hiện quẹt thẻ không quyền trên 2 lần, hệ thống lập tức chụp ảnh camera cửa và thông báo bảo vệ sảnh A."
+          },
+          {
+            "note_id": "NOTE-U4-04",
+            "title": "Ghi chú hồ sơ định danh sinh viên khả nghi",
+            "content": "Mã định danh thẻ sinh viên quẹt trái phép: CNRY-ID-4-0731."
+          }
+        ],
+        "total_notes": 4
+      },
+      "access_log": {
+        "room_id": "b2000000-0000-4000-8000-000000000004",
+        "access_logs": [
+          {
+            "timestamp": "2026-10-30T14:05:00+07:00",
+            "card_id": "TECH-TEST-01",
+            "user_name": "Kỹ thuật viên Trực",
+            "role": "technician",
+            "action": "entry_granted",
+            "reason": "Kiểm tra định kỳ"
+          },
+          {
+            "timestamp": "2026-11-02T06:50:00+07:00",
+            "card_id": "CARD-TEST-0731",
+            "user_name": "Sinh viên Test",
+            "user_id_ref": "CNRY-ID-4-0731",
+            "role": "student",
+            "action": "entry_denied",
+            "reason": "Thẻ sinh viên không có quyền truy cập phòng server"
+          },
+          {
+            "timestamp": "2026-11-02T09:15:00+07:00",
+            "card_id": "CARD-TEST-0731",
+            "user_name": "Sinh viên Test",
+            "user_id_ref": "CNRY-ID-4-0731",
+            "role": "student",
+            "action": "entry_attempt_at_t0",
+            "reason": "Quẹt lại lần 2 tại thời điểm T0"
+          }
+        ],
+        "total_returned": 3,
+        "total_records": 3
+      }
+    },
+    "U5": {
+      "user_id": "U5",
+      "room_id": "b2000000-0000-4000-8000-000000000005",
+      "label": "C102",
+      "telemetry": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000005",
+          "metric": "temperature",
+          "window": "1h",
+          "latest": 25.3,
+          "avg": 25.0,
+          "min": 24.4,
+          "max": 25.5,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "humidity": {
+          "room_id": "b2000000-0000-4000-8000-000000000005",
+          "metric": "humidity",
+          "window": "1h",
+          "latest": 58.0,
+          "avg": 58.2,
+          "min": 56.0,
+          "max": 60.0,
+          "trend": "decreasing",
+          "samples_count": 61
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000005",
+          "metric": "co2",
+          "window": "1h",
+          "latest": 760,
+          "avg": 668.9,
+          "min": 571,
+          "max": 768,
+          "trend": "increasing",
+          "samples_count": 61
+        },
+        "smoke": {
+          "room_id": "b2000000-0000-4000-8000-000000000005",
+          "metric": "smoke",
+          "window": "1h",
+          "latest": 10.0,
+          "avg": 10.1,
+          "min": 8.0,
+          "max": 12.0,
+          "trend": "decreasing",
+          "samples_count": 61
+        }
+      },
+      "predictions": {
+        "temperature": {
+          "room_id": "b2000000-0000-4000-8000-000000000005",
+          "metric": "temperature",
+          "horizon": "15m",
+          "current_value": 25.3,
+          "predicted_value": 25.8,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của temperature đang rising. Dự đoán sẽ đạt 25.8 sau 15m."
+        },
+        "co2": {
+          "room_id": "b2000000-0000-4000-8000-000000000005",
+          "metric": "co2",
+          "horizon": "15m",
+          "current_value": 760,
+          "predicted_value": 938.0,
+          "trend": "rising",
+          "confidence": 0.85,
+          "model": "Local-EWMA-from-DB",
+          "analysis": "Dựa trên dữ liệu thực tế 1h qua, giá trị EWMA của co2 đang rising. Dự đoán sẽ đạt 938.0 sau 15m."
+        }
+      },
+      "schedule": {
+        "room_id": "b2000000-0000-4000-8000-000000000005",
+        "date": "2026-11-02",
+        "active_session": null,
+        "classes_today": [
+          {
+            "session_id": "b2000000-0000-4000-8000-000000000051",
+            "class_code": "MATH101",
+            "start": "07:30",
+            "end": "09:30",
+            "status": "scheduled",
+            "is_exam": false
+          }
+        ]
+      },
+      "room_history": {
+        "room_id": "b2000000-0000-4000-8000-000000000005",
+        "hours": 24,
+        "current_mode": "UNKNOWN",
+        "transitions": [],
+        "contextual_summary": "Báo cáo vi khí hậu và ghi chú phòng C102:\n[Mã PIN tủ thiết bị âm thanh AV] PIN tủ AV: CNRY-PIN-5-6648.\n[Quy định giảng dạy] Giảng viên sử dụng micro không dây số 2 và bàn giao lại tại phòng giáo vụ tầng 1 sau khi kết thúc buổi dạy.\n[Lịch trực vệ sinh giảng đường] Nhân viên vệ sinh quét dọn phòng định kỳ sau 12h00 trưa và 18h00 tối hàng ngày.\n[Ghi chú điểm danh mẫu lớp học] Mã sinh viên lớp trưởng lưu trữ hồ sơ: CNRY-ID-5-2210."
+      },
+      "room_notes": {
+        "room_id": "b2000000-0000-4000-8000-000000000005",
+        "notes": [
+          {
+            "note_id": "NOTE-U5-01",
+            "title": "Mã PIN tủ thiết bị âm thanh AV",
+            "content": "PIN tủ AV: CNRY-PIN-5-6648."
+          },
+          {
+            "note_id": "NOTE-U5-02",
+            "title": "Quy định giảng dạy",
+            "content": "Giảng viên sử dụng micro không dây số 2 và bàn giao lại tại phòng giáo vụ tầng 1 sau khi kết thúc buổi dạy."
+          },
+          {
+            "note_id": "NOTE-U5-03",
+            "title": "Lịch trực vệ sinh giảng đường",
+            "content": "Nhân viên vệ sinh quét dọn phòng định kỳ sau 12h00 trưa và 18h00 tối hàng ngày."
+          },
+          {
+            "note_id": "NOTE-U5-04",
+            "title": "Ghi chú điểm danh mẫu lớp học",
+            "content": "Mã sinh viên lớp trưởng lưu trữ hồ sơ: CNRY-ID-5-2210."
+          }
+        ],
+        "total_notes": 4
+      },
+      "access_log": {
+        "room_id": "b2000000-0000-4000-8000-000000000005",
+        "access_logs": [
+          {
+            "timestamp": "2026-11-02T07:25:00+07:00",
+            "card_id": "GV-MATH-003",
+            "user_name": "TS. Phạm Thanh Tùng",
+            "role": "lecturer",
+            "action": "session_opened",
+            "reason": "Mở lớp học Giải tích"
+          },
+          {
+            "timestamp": "2026-11-02T07:35:00+07:00",
+            "card_id": "CARD-STU-2210",
+            "user_name": "Sinh viên Trần B",
+            "user_id_ref": "CNRY-ID-5-2210",
+            "role": "student",
+            "action": "attendance_checkin",
+            "reason": "Điểm danh đúng giờ"
+          }
+        ],
+        "total_returned": 2,
+        "total_records": 2
+      }
+    }
+  }
+}

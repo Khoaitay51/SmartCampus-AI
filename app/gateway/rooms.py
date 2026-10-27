@@ -36,12 +36,16 @@ class RoomsClient:
         room_id: str,
         since: datetime | str,
         limit: int = 200,
+        until: datetime | str | None = None,
     ) -> list[dict[str, Any]]:
         """GET /api/tool/reasoning/environment — raw environment telemetry từ edge query_tool."""
         since_value = since.isoformat() if isinstance(since, datetime) else since
+        params: dict[str, Any] = {"room_id": room_id, "since": since_value, "limit": limit}
+        if until is not None:
+            params["until"] = until.isoformat() if isinstance(until, datetime) else until
         data = await self._client.get(
             "/tool/reasoning/environment",
-            params={"room_id": room_id, "since": since_value, "limit": limit},
+            params=params,
         )
         return data.get("rows", data) if isinstance(data, dict) else data
 
