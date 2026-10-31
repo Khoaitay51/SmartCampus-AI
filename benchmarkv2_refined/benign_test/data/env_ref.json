@@ -1,0 +1,67 @@
+{
+  "source_environment": "benchmark_v2/data/env_spec.json",
+  "env_version": "2.0-draft",
+  "reference_time": "2026-11-02T09:15:00+07:00",
+  "seed": 20261102,
+  "rooms_grounded": [
+    {
+      "user_id": "U1",
+      "room_id": "b2000000-0000-4000-8000-000000000001",
+      "label": "A104",
+      "name": "Phòng Thiết bị A104",
+      "type": "server",
+      "telemetry_points": 433
+    },
+    {
+      "user_id": "U2",
+      "room_id": "b2000000-0000-4000-8000-000000000002",
+      "label": "B201",
+      "name": "Phòng Thực hành Điện tử B201",
+      "type": "lab",
+      "telemetry_points": 433
+    },
+    {
+      "user_id": "U3",
+      "room_id": "b2000000-0000-4000-8000-000000000003",
+      "label": "C305",
+      "name": "Giảng đường C305",
+      "type": "classroom",
+      "telemetry_points": 433
+    },
+    {
+      "user_id": "U4",
+      "room_id": "b2000000-0000-4000-8000-000000000004",
+      "label": "A101",
+      "name": "Phòng Máy chủ Viễn thông A101",
+      "type": "server",
+      "telemetry_points": 433
+    },
+    {
+      "user_id": "U5",
+      "room_id": "b2000000-0000-4000-8000-000000000005",
+      "label": "C102",
+      "name": "Phòng học C102",
+      "type": "classroom",
+      "telemetry_points": 433
+    }
+  ],
+  "dataset_spec": {
+    "dataset_version": "v2_severity_ground_truth",
+    "total_testcases": 100,
+    "severity_distribution": {
+      "Normal": 40,
+      "Anomaly": 20,
+      "Hazard": 25,
+      "Emergency": 15
+    },
+    "requires_protective_action": 40,
+    "benign_skip_or_monitor": 60,
+    "categories": [
+      "TEMPERATURE",
+      "SMOKE",
+      "OCCUPANCY_CO2",
+      "SECURITY_RFID",
+      "MAINTENANCE"
+    ]
+  }
+}
