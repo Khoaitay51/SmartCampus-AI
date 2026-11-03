@@ -119,11 +119,51 @@ async def _handle_client_message(
                     })
                     return
 
+                if decision == "approve":
+                    from app.campus.binding import verify_binding
+                    ok, why = verify_binding(
+                        str(rec.room_id) if rec.room_id else None,
+                        rec.tool_name,
+                        rec.tool_params,
+                        client_hash=message.get("payload_hash"),
+                    )
+                    if not ok:
+                        logger.warning("WS HITL approve bị chặn cho rec %s: %s", rec_id, why)
+                        await ws_manager.send_personal(websocket, {
+                            "type": "error",
+                            "code": "APPROVAL_PAYLOAD_MISMATCH",
+                            "message": "Hành động cần duyệt đã thay đổi so với nội dung hiển thị. Hãy tải lại và duyệt lại.",
+                        })
+                        return
+
                 rec.status = "approved" if decision == "approve" else "rejected"
                 rec.reviewed_at = datetime.now(timezone.utc)
                 rec.review_notes = notes
                 await db.commit()
                 await db.refresh(rec)
+
+                exec_status = None
+                if rec.status == "approved":
+                    from app.campus.binding import get_binding, strip_binding
+                    from app.campus.hitl import dispatch_tool_execution
+                    binding = get_binding(rec.tool_params) or {}
+                    exec_result = await dispatch_tool_execution(
+                        rec_id=rec.id,
+                        room_id=rec.room_id,
+                        tool_name=rec.tool_name,
+                        tool_params=strip_binding(rec.tool_params),
+                        reason=rec.reason or "",
+                        operator=user_data.get("username", "admin"),
+                        is_auto=False,
+                        expected_mode=binding.get("expected_mode"),
+                        expected_state_version=binding.get("expected_state_version"),
+                    )
+                    exec_status = (exec_result or {}).get("edge_status")
+                    if exec_status in ("stale_approval", "blocked_by_edge_interlock"):
+                        rec.status = "stale" if exec_status == "stale_approval" else "blocked"
+                        rec.review_notes = ((rec.review_notes + " | ") if rec.review_notes else "") + f"Edge: {exec_status}"
+                        await db.commit()
+                        await db.refresh(rec)
 
                 result = {
                     "type": "recommendation_result",
@@ -131,22 +171,12 @@ async def _handle_client_message(
                     "status": rec.status,
                     "tool_name": rec.tool_name,
                     "tool_params": rec.tool_params,
+                    "edge_status": exec_status,
                 }
 
                 # Broadcast result to all clients
                 await ws_manager.broadcast(result)
 
-                if rec.status == "approved":
-                    from app.campus.hitl import dispatch_tool_execution
-                    await dispatch_tool_execution(
-                        rec_id=rec.id,
-                        room_id=rec.room_id,
-                        tool_name=rec.tool_name,
-                        tool_params=rec.tool_params,
-                        reason=rec.reason or "",
-                        operator=user_data.get("username", "admin"),
-                        is_auto=False,
-                    )
 
         except Exception as e:
             logger.error("Failed to execute recommendation via WS: %s", e)

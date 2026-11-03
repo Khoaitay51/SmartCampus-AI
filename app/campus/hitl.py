@@ -37,45 +37,32 @@ def set_hitl_enabled(enabled: bool) -> bool:
     return _HITL_ENABLED
 
 
-def translate_recommendation_to_command(tool_name: str, tool_params: dict[str, Any]) -> tuple[str, str] | None:
-    """Ánh xạ tên tool và params từ AI Agent sang command_type và command_value chuẩn của Edge Gateway."""
-    tool_lower = (tool_name or "").lower().strip()
-    
-    if tool_lower in ("set_fan", "fan_control"):
-        raw_val = str(tool_params.get("state") or tool_params.get("value") or tool_params.get("status") or "").lower().strip()
-        val = "off" if raw_val in ("off", "0", "false", "low", "stop", "tat", "tắt") else "on"
-        return "fan", val
+# translate_recommendation_to_command được tách sang module thuần để binding.py dùng chung
+# (re-export tại đây để giữ tương thích các import cũ).
+from app.campus.command_translation import translate_recommendation_to_command  # noqa: E402,F401
 
-    elif tool_lower in ("set_door", "door_control"):
-        raw_val = str(tool_params.get("state") or tool_params.get("value") or tool_params.get("status") or "").lower().strip()
-        # Fail-Secure: Bắt buộc nhận diện rõ ràng trạng thái; không default sang unlocked!
-        if raw_val in ("locked", "lock", "true", "1", "dong", "đóng", "khoa", "khóa", "close", "closed"):
-            return "door", "locked"
-        elif raw_val in ("unlocked", "unlock", "false", "0", "mo", "mở", "open", "opened"):
-            return "door", "unlocked"
-        else:
-            logger.warning("Fail-Secure: Không nhận diện được giá trị cửa an toàn từ '%s', từ chối dịch lệnh.", raw_val)
-            return None
 
-    elif tool_lower in ("set_mode", "mode_control"):
-        mode = str(tool_params.get("mode") or tool_params.get("value") or "saving").lower().strip()
-        return "mode", mode
+def _edge_commands_base() -> str:
+    base_edge_url = settings.BACKEND_BASE_URL.rstrip("/")
+    return f"{base_edge_url}/commands" if base_edge_url.endswith("/api") else f"{base_edge_url}/api/commands"
 
-    elif tool_lower in ("trigger_buzzer", "buzzer_control"):
-        pattern = str(tool_params.get("pattern") or tool_params.get("state") or tool_params.get("value") or "short").lower().strip()
-        return "buzzer", pattern if pattern in ("off", "0", "false") else "on"
 
-    elif tool_lower in ("set_led", "led_strip_control"):
-        state = str(tool_params.get("state") or tool_params.get("value") or "solid").lower().strip()
-        val = "off" if state in ("off", "0") else "on"
-        return "light", val
+async def fetch_edge_state_snapshot(room_id: UUID | str | None) -> dict[str, Any] | None:
+    """Lấy ``{mode, state_version}`` hiện tại của phòng từ Edge (best-effort, timeout ngắn).
 
-    elif tool_lower == "send_alert":
-        level = str(tool_params.get("level", "info")).lower().strip()
-        if level in ("critical", "emergency"):
-            return "buzzer", "on"
+    Dùng khi tạo recommendation để bind đề xuất vào đúng trạng thái vật lý mà người duyệt sẽ thấy.
+    Trả về ``None`` nếu Edge không phản hồi (khi đó binding chỉ còn payload hash).
+    """
+    if not room_id:
         return None
-
+    url = f"{_edge_commands_base()}/room/{room_id}/state-snapshot"
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception as exc:
+        logger.warning("Không lấy được state snapshot từ Edge (%s): %s", url, exc)
     return None
 
 
@@ -87,6 +74,8 @@ async def dispatch_tool_execution(
     reason: str = "",
     operator: str = "operator",
     is_auto: bool = False,
+    expected_mode: str | None = None,
+    expected_state_version: str | None = None,
 ) -> dict[str, Any]:
     """Gửi lệnh thực thi sang Edge Gateway API để điều khiển cơ cấu chấp hành vật lý thật."""
     cmd_pair = translate_recommendation_to_command(tool_name, tool_params)
@@ -139,6 +128,9 @@ async def dispatch_tool_execution(
             "command_value": command_value,
             "reason": f"AI Recommendation {rec_id} ({'Auto-pilot' if is_auto else 'Approved by ' + operator}): {reason}",
             "source": "ai_agent" if is_auto else "admin_hitl",
+            # Physical-TOCTOU binding: Edge sẽ từ chối (409) nếu phòng đã đổi trạng thái sau khi đề xuất.
+            "expected_mode": expected_mode,
+            "expected_state_version": expected_state_version,
         }
 
         edge_accepted = False
@@ -153,8 +145,13 @@ async def dispatch_tool_execution(
                     result_summary["edge_response"] = resp.json()
                     logger.info("Edge Gateway đã nhận lệnh thành công: %s", resp.text)
                 else:
-                    result_summary["edge_status"] = f"http_error_{resp.status_code}"
                     result_summary["edge_response"] = resp.text
+                    if resp.status_code == 409:
+                        result_summary["edge_status"] = "stale_approval"
+                    elif resp.status_code == 403:
+                        result_summary["edge_status"] = "blocked_by_edge_interlock"
+                    else:
+                        result_summary["edge_status"] = f"http_error_{resp.status_code}"
                     logger.warning("Edge Gateway từ chối hoặc trả về lỗi: %s - %s", resp.status_code, resp.text)
         except Exception as exc:
             logger.error("Không thể kết nối sang Edge Gateway (%s): %s", execute_url, exc)

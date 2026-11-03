@@ -441,11 +441,22 @@ async def _run_agent_task(
             review_notes = f"⚡ Tự động phê duyệt qua Autopilot (Tier-1 Reversible Tool, Conf: {confidence:.2f} >= {AUTOPILOT_MIN_CONFIDENCE})"
             requires_conf = False
 
+        # --- HITL Consent-Integrity + physical-TOCTOU binding ---
+        from app.campus.binding import compute_payload_hash, with_binding
+        from app.campus.hitl import fetch_edge_state_snapshot
+
+        snapshot = await fetch_edge_state_snapshot(room_uuid)
+        ctx_mode = getattr(getattr(context, "room_mode", None), "value", None)
+        bound_mode = (snapshot or {}).get("mode") or ctx_mode
+        bound_version = (snapshot or {}).get("state_version")
+        stored_params = with_binding(str(room_uuid), tool_name, rec_params, bound_mode, bound_version)
+        payload_hash, canonical = compute_payload_hash(str(room_uuid), tool_name, rec_params)
+
         rec_obj = AIRecommendation(
             event_id=str(event.event_id),
             room_id=room_uuid,
             tool_name=tool_name,
-            tool_params=rec_params,
+            tool_params=stored_params,
             reason=response.recommendation.reason,
             confidence=confidence,
             urgency=response.recommendation.urgency,
@@ -475,6 +486,10 @@ async def _run_agent_task(
             "is_fallback": response.is_fallback,
             "requires_confirmation": requires_conf,
             "auto_executed": can_autopilot,
+            # Canonical technical payload (thứ thực sự sẽ thực thi) + hash để UI hiển thị/echo khi duyệt.
+            "payload_hash": payload_hash,
+            "canonical_payload": canonical,
+            "expected_mode": bound_mode,
             "edge_rest_endpoint": f"{settings.BACKEND_BASE_URL.rstrip('/')}/commands/room/execute" if settings.BACKEND_BASE_URL.rstrip('/').endswith("/api") else f"{settings.BACKEND_BASE_URL.rstrip('/')}/api/commands/room/execute",
         }
 
@@ -522,6 +537,8 @@ async def _run_agent_task(
                 reason=response.recommendation.reason or "Auto-pilot execution without manual approval",
                 operator="AI_AUTOPILOT",
                 is_auto=True,
+                expected_mode=bound_mode,
+                expected_state_version=bound_version,
             )
 
 

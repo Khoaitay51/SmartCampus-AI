@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -131,14 +131,29 @@ class RecommendationResponse(BaseModel):
     review_notes: Optional[str] = None
     created_at: datetime
     execution_result: Optional[dict[str, Any]] = None
+    # Binding metadata (suy ra từ tool_params['_binding']) — UI hiển thị & echo lại khi duyệt.
+    payload_hash: Optional[str] = None
+    expected_mode: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def _expose_binding(self):
+        binding = (self.tool_params or {}).get("_binding")
+        if isinstance(binding, dict):
+            self.payload_hash = binding.get("payload_hash")
+            self.expected_mode = binding.get("expected_mode")
+        return self
 
 
 class RecommendationAction(BaseModel):
     """HITL approve/reject action."""
     action: str = Field(..., description="'approve' or 'reject'")
     notes: Optional[str] = None
+    payload_hash: Optional[str] = Field(
+        default=None,
+        description="Hash của payload mà UI đã hiển thị cho người duyệt; server tính lại và so sánh chính xác.",
+    )
 
 
 class HitlToggleRequest(BaseModel):

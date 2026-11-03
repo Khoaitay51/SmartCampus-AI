@@ -56,11 +56,22 @@ async def create_recommendation(
     Được gọi từ evaluate pipeline hoặc MQTT bridge khi AI agent suggest tool.
     Không cần auth (internal service call).
     """
+    from app.campus.binding import with_binding
+    from app.campus.hitl import fetch_edge_state_snapshot
+
+    tool_params = payload.get("tool_params", {})
+    snapshot = await fetch_edge_state_snapshot(payload.get("room_id"))
     rec = AIRecommendation(
         event_id=payload.get("event_id"),
         room_id=payload.get("room_id"),
         tool_name=payload["tool_name"],
-        tool_params=payload.get("tool_params", {}),
+        tool_params=with_binding(
+            str(payload.get("room_id") or tool_params.get("room_id") or ""),
+            payload["tool_name"],
+            tool_params,
+            (snapshot or {}).get("mode"),
+            (snapshot or {}).get("state_version"),
+        ),
         reason=payload.get("reason"),
         confidence=payload.get("confidence"),
         urgency=payload.get("urgency", "medium"),
@@ -178,6 +189,26 @@ async def execute_recommendation(
     if data.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
 
+    from app.campus.binding import get_binding, verify_binding
+
+    binding = get_binding(rec.tool_params)
+    if data.action == "approve":
+        # Consent Integrity: payload thực thi phải đúng bằng payload đã bind lúc đề xuất
+        # và đúng bằng payload mà UI đã hiển thị cho người duyệt (nếu client echo hash).
+        ok, why = verify_binding(
+            str(rec.room_id) if rec.room_id else None,
+            rec.tool_name,
+            rec.tool_params,
+            client_hash=data.payload_hash,
+        )
+        if not ok:
+            logger.warning("HITL approve bị chặn cho rec %s: %s", rec_id, why)
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "APPROVAL_PAYLOAD_MISMATCH", "reason": why,
+                        "message": "Hành động cần duyệt đã thay đổi so với nội dung hiển thị. Hãy tải lại và duyệt lại."},
+            )
+
     rec.status = "approved" if data.action == "approve" else "rejected"
     rec.reviewed_by = current_user.id
     rec.reviewed_at = datetime.now(timezone.utc)
@@ -188,17 +219,31 @@ async def execute_recommendation(
 
     exec_result = None
     if rec.status == "approved":
+        from app.campus.binding import strip_binding
         from app.campus.hitl import dispatch_tool_execution
-        # Thực thi lệnh trực tiếp sang Edge Gateway và phần cứng
+        # Thực thi lệnh trực tiếp sang Edge Gateway và phần cứng.
+        # expected_* khiến Edge từ chối (409) nếu trạng thái phòng đã đổi kể từ lúc đề xuất.
         exec_result = await dispatch_tool_execution(
             rec_id=rec.id,
             room_id=rec.room_id,
             tool_name=rec.tool_name,
-            tool_params=rec.tool_params,
+            tool_params=strip_binding(rec.tool_params),
             reason=rec.reason or "",
             operator=current_user.username,
             is_auto=False,
+            expected_mode=(binding or {}).get("expected_mode"),
+            expected_state_version=(binding or {}).get("expected_state_version"),
         )
+
+        # Edge từ chối => không để rec ở trạng thái 'approved' gây hiểu nhầm là đã chạy.
+        edge_status = (exec_result or {}).get("edge_status")
+        if edge_status in ("stale_approval", "blocked_by_edge_interlock"):
+            rec.status = "stale" if edge_status == "stale_approval" else "blocked"
+            rec.review_notes = (
+                (rec.review_notes + " | ") if rec.review_notes else ""
+            ) + f"Edge: {edge_status}"
+            await db.commit()
+            await db.refresh(rec)
 
     logger.info(
         "Recommendation %s %s by %s",
@@ -209,6 +254,7 @@ async def execute_recommendation(
     if exec_result:
         resp_obj.execution_result = exec_result
     return resp_obj
+
 
 
 class DirectExecuteRequest(BaseModel):
