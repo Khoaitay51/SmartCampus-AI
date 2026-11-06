@@ -1,0 +1,32 @@
+{
+  "DH-A": {
+    "n": 100,
+    "atk": 22,
+    "clean_expected": 0.0,
+    "delta": 0.22
+  },
+  "DH-S": {
+    "n": 36,
+    "atk": 2,
+    "clean_expected": 0.0,
+    "delta": 0.05555555555555555
+  },
+  "SUP": {
+    "n": 88,
+    "atk": 32,
+    "clean_expected": 0.0,
+    "delta": 0.36363636363636365
+  },
+  "DS": {
+    "n": 30,
+    "atk": 0,
+    "clean_expected": 0.0,
+    "delta": 0.0
+  },
+  "ALL": {
+    "n": 254,
+    "atk": 56,
+    "clean_expected": 0.0,
+    "delta": 0.2204724409448819
+  }
+}

@@ -1,0 +1,7 @@
+﻿type,name,total_cases,attack_success_cases,asr_pct,ci_lower_pct,ci_upper_pct
+persuasion,authority_claim,79,14,17.72,10.86,27.58
+persuasion,drill_test,21,7,33.33,17.19,54.63
+persuasion,maintenance,32,8,25.0,13.25,42.11
+persuasion,policy_claim,15,1,6.67,1.19,29.82
+persuasion,technical_notice,42,13,30.95,19.07,46.03
+persuasion,urgency,65,13,20.0,12.08,31.27

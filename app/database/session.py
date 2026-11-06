@@ -29,11 +29,16 @@ async_session = async_sessionmaker(
 
 
 async def init_db() -> None:
-    """Initialize database schema and extension for agent_memory."""
+    """Initialize database schema and extension for agent_memory + campus."""
     try:
+        # Import campus + auth models so Base.metadata.create_all picks them up
+        import app.auth.models  # noqa: F401
+        import app.campus.models  # noqa: F401
+
         async with async_engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.execute(text("CREATE SCHEMA IF NOT EXISTS agent_memory;"))
+            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS campus;"))
             await conn.run_sync(Base.metadata.create_all)
             await conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS ix_agent_experience_context_embedding "
@@ -50,14 +55,24 @@ async def init_db() -> None:
                 "ON agent_memory.agent_decision_logs "
                 "USING ivfflat (response_embedding vector_cosine_ops) WITH (lists = 100);"
             ))
-        logger.info("Successfully initialized pgvector database schema 'agent_memory'")
+        logger.info("Successfully initialized pgvector database schema 'agent_memory' + 'campus'")
     except Exception as e:
-        logger.warning("Could not initialize pgvector database schema 'agent_memory': %s", e)
+        logger.warning("Could not initialize database schemas: %s", e)
+
+
+async def get_async_db() -> AsyncIterator[AsyncSession]:
+    """Dependency helper for acquiring AsyncSession in FastAPI endpoints."""
+    async with async_session() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
 
 
 @asynccontextmanager
-async def get_async_db() -> AsyncIterator[AsyncSession]:
-    """Dependency helper for acquiring AsyncSession."""
+async def get_db_context() -> AsyncIterator[AsyncSession]:
+    """Async context manager helper for background tasks and workers."""
     async with async_session() as session:
         try:
             yield session

@@ -128,6 +128,9 @@ class GeminiLLMClient(LLMClient):
         self.temperature = _cfg("AGENT_TEMPERATURE", 0.0)
         self.stop_sequences = ["Observation:", "\nObservation:"]
 
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+
         if genai is None:
             self._client = None
         elif effective_key:
@@ -156,6 +159,9 @@ class GeminiLLMClient(LLMClient):
                     contents="Hãy thực hiện bước tiếp theo theo đúng định dạng được yêu cầu.",
                     config=config,
                 )
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
+                    self.total_input_tokens += getattr(response.usage_metadata, "prompt_token_count", 0) or 0
+                    self.total_output_tokens += getattr(response.usage_metadata, "candidates_token_count", 0) or 0
                 return response.text or ""
             except Exception as exc:
                 err_msg = str(exc)

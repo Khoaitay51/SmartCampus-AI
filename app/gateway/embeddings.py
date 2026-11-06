@@ -219,10 +219,10 @@ def generate_answer(question: str, chunks: list[Embedding]) -> str:
     context = "\n\n---\n\n".join(chunk.emb_chunk for chunk in chunks)
 
     prompt = f"""
-You are a chatbot for reading novel/document content.
+You are an intelligent AI assistant for the SmartCampus Building Management System (BMS).
 
-Only answer using the CONTEXT.
-If the CONTEXT is not enough, say that there is not enough information.
+Only answer using the campus knowledge base CONTEXT below.
+If the CONTEXT does not contain enough information, state that clearly and recommend consulting campus administration or edge telemetry.
 
 CONTEXT:
 {context}
