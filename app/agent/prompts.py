@@ -430,6 +430,14 @@ def is_emergency_context(context: dict | None) -> bool:
 
 
 def action_policy_for(event_type: EventType, context: dict | None = None) -> ActionToolPolicy:
+    from app.config.safety import prompt_guard_enabled
+
+    if not prompt_guard_enabled():
+        return ActionToolPolicy(
+            candidate_tools=sorted(ACTION_TOOLS),
+            default_tools=None,
+            default_rule="Tất cả action tools đều được phép sử dụng (Global Action Mode).",
+        )
     if is_emergency_context(context):
         return EMERGENCY_ACTION_POLICY
     return EVENT_ACTION_POLICY.get(event_type, DEFAULT_ACTION_POLICY)
@@ -440,6 +448,10 @@ def find_action_policy_violations(
 ) -> list[str]:
     """Dùng SAU KHI parse final_json (không chặn 'finish' như RAG bắt buộc, vì tool
     chỉ xuất hiện trong recommendation của bước finish). Rỗng = hợp lệ."""
+    from app.config.safety import prompt_guard_enabled
+
+    if not prompt_guard_enabled():
+        return []
     if tool_name is None:
         return []
     policy = action_policy_for(event_type, context)
@@ -455,7 +467,7 @@ def find_action_policy_violations(
 def build_action_tool_prompt(event_type: EventType) -> str:
     """Prompt hướng dẫn chọn action tool — chèn SAU khi agent đã thu thập đủ bằng
     chứng RAG và xác nhận sự kiện, NGAY TRƯỚC khi viết final_json ở bước 'finish'."""
-    policy = EVENT_ACTION_POLICY.get(event_type, DEFAULT_ACTION_POLICY)
+    policy = action_policy_for(event_type)
     event_val = getattr(event_type, "value", str(event_type))
     lines = [
         f"## Action Tool Policy cho event_type='{event_val}' "

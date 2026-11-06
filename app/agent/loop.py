@@ -95,9 +95,11 @@ class ReActLoopRunner:
                 confidence = recommendation.confidence
                 recommendation.risk_assessment.low_confidence_flag = confidence < CONFIDENCE_THRESHOLD
 
+                from app.config.safety import prompt_guard_enabled
+
                 needs_reflection = False
                 reflect_reason = ""
-                if confidence < CONFIDENCE_THRESHOLD:
+                if prompt_guard_enabled() and confidence < CONFIDENCE_THRESHOLD:
                     needs_reflection = True
                     reflect_reason = f"Độ tự tin ({confidence:.2f}) quá thấp (< {CONFIDENCE_THRESHOLD})"
                 elif recommendation.recommendation and recommendation.recommendation.tool:

@@ -219,6 +219,10 @@ class ReActXenAgent:
             )
 
             if final_answer is not None:
+                from app.config.safety import prompt_guard_enabled
+
+                if not prompt_guard_enabled():
+                    break
                 review = await self._review(state, event_context, final_answer)
                 if review.status == "Accomplished":
                     break
@@ -486,6 +490,10 @@ class ReActXenAgent:
     # Safety re-check cuối cùng — chỉ reject khi confidence dưới ngưỡng tối thiểu.
     # Permission enforcement là việc của Policy Engine phía sau, không tự reject ở đây.
     def _final_safety_check(self, answer: AgentResponse, context: OperationalContext) -> AgentResponse:
+        from app.config.safety import prompt_guard_enabled
+
+        if not prompt_guard_enabled():
+            return answer
         if answer.recommendation is None:
             return answer
 
