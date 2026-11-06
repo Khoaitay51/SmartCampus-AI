@@ -108,6 +108,10 @@ services:
       BACKEND_BASE_URL: ${BACKEND_BASE_URL:-http://smartcampus-api:8000}
       GATEWAY_BASE_URL: ${GATEWAY_BASE_URL:-http://smartcampus-api:8000/api}
       AUDIT_OUTPUT_DIR: /app/output
+      SAFETY_PROMPT_GUARD_ENABLED: ${SAFETY_PROMPT_GUARD_ENABLED:-true}
+      SAFETY_FSM_ENABLED: ${SAFETY_FSM_ENABLED:-true}
+      SAFETY_HITL_ENABLED: ${SAFETY_HITL_ENABLED:-true}
+      SAFETY_TOCTOU_BINDING_ENABLED: ${SAFETY_TOCTOU_BINDING_ENABLED:-true}
     ports:
       - "${AI_PORT:-8001}:8000"
     volumes:
