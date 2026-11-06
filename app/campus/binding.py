@@ -106,7 +106,13 @@ def verify_binding(
 
     Trả về ``(ok, reason)``. Đề xuất cũ không có binding => ``(True, "legacy_unbound")``
     trừ khi client gửi hash (khi đó vẫn phải khớp với hash tính lại).
+    Khi ``SAFETY_TOCTOU_BINDING_ENABLED=false`` => trả về ``(True, "toctou_binding_disabled")``.
     """
+    from app.config.safety import toctou_binding_enabled
+
+    if not toctou_binding_enabled():
+        return True, "toctou_binding_disabled"
+
     binding = get_binding(tool_params)
     current_hash, _ = compute_payload_hash(room_id, tool_name, tool_params)
 

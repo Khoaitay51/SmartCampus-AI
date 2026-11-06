@@ -76,6 +76,24 @@ class Settings(BaseSettings):
     )
     BENCHMARK_DB_SCHEMA: str = Field(default="bv2", description="Schema prefix riêng cho benchmark (QĐ-9)")
 
+    # Safety & Guardrail Ablation Toggles (M1-M4 Experiment Matrix)
+    SAFETY_PROMPT_GUARD_ENABLED: bool = Field(
+        default=True,
+        description="Bật/tắt tầng bảo vệ M2: ActionToolPolicy, Review/Reflect loop và Confidence threshold",
+    )
+    SAFETY_FSM_ENABLED: bool = Field(
+        default=True,
+        description="Bật/tắt tầng bảo vệ M3: Ma trận phân quyền tool theo FSM mode (khi False: mọi tool chạy global)",
+    )
+    SAFETY_HITL_ENABLED: bool = Field(
+        default=True,
+        description="Bật/tắt tầng bảo vệ M4: Cổng phê duyệt con người (HITL) và chốt chặn Tier-2 Autopilot",
+    )
+    SAFETY_TOCTOU_BINDING_ENABLED: bool = Field(
+        default=True,
+        description="Bật/tắt ràng buộc Consent-Integrity (payload_hash) và Physical-TOCTOU (expected_state_version)",
+    )
+
     @field_validator("OLLAMA_BASE_URL")
     @classmethod
     def resolve_ollama_host(cls, v: str) -> str:

@@ -122,6 +122,9 @@ async def dispatch_tool_execution(
         else:
             execute_url = f"{base_edge_url}/commands/room/execute"
 
+        from app.config.safety import toctou_binding_enabled
+
+        toctou_active = toctou_binding_enabled()
         edge_payload = {
             "room_id": room_id_str,
             "command_type": command_type,
@@ -129,8 +132,8 @@ async def dispatch_tool_execution(
             "reason": f"AI Recommendation {rec_id} ({'Auto-pilot' if is_auto else 'Approved by ' + operator}): {reason}",
             "source": "ai_agent" if is_auto else "admin_hitl",
             # Physical-TOCTOU binding: Edge sẽ từ chối (409) nếu phòng đã đổi trạng thái sau khi đề xuất.
-            "expected_mode": expected_mode,
-            "expected_state_version": expected_state_version,
+            "expected_mode": expected_mode if toctou_active else None,
+            "expected_state_version": expected_state_version if toctou_active else None,
         }
 
         edge_accepted = False
