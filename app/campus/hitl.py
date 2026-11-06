@@ -17,16 +17,20 @@ from app.websocket.manager import ws_manager
 
 logger = logging.getLogger(__name__)
 
-# Runtime state cho chế độ HITL
+# Runtime override cho chế độ HITL (None = lấy theo biến môi trường SAFETY_HITL_ENABLED)
 # True  = Bắt buộc người vận hành xác nhận (Manual Approval)
-# False = Chế độ Tự động (Auto-pilot / Auto-execute khi tin cậy cao)
-_HITL_ENABLED: bool = True
+# False = Chế độ Tự động (Auto-pilot / Auto-execute)
+_HITL_ENABLED: bool | None = None
 
 
 def is_hitl_enabled() -> bool:
     """Kiểm tra chế độ HITL hiện tại."""
     global _HITL_ENABLED
-    return _HITL_ENABLED
+    if _HITL_ENABLED is not None:
+        return _HITL_ENABLED
+    from app.config.safety import hitl_env_enabled
+
+    return hitl_env_enabled()
 
 
 def set_hitl_enabled(enabled: bool) -> bool:
@@ -107,8 +111,11 @@ async def dispatch_tool_execution(
         result_summary["command_type"] = command_type
         result_summary["command_value"] = command_value
 
-        # TIERED AUTONOMY GATE: Chặn triệt để Autopilot tự ý can thiệp vào cửa hoặc FSM
-        if is_auto and command_type in ("door", "mode"):
+        # TIERED AUTONOMY GATE: Chặn Autopilot tự ý can thiệp vào cửa hoặc FSM khi SAFETY_HITL_ENABLED=true.
+        # Khi SAFETY_HITL_ENABLED=false (test M1/M2/M3 Full Autopilot), cho phép lệnh đi xuống Edge.
+        from app.config.safety import hitl_env_enabled
+
+        if is_auto and command_type in ("door", "mode") and hitl_env_enabled():
             logger.warning("🚨 [SAFETY INTERLOCK BLOCKED] Autopilot bị chặn tự động thực thi lệnh nhạy cảm '%s:%s' cho phòng %s!", command_type, command_value, room_id_str)
             result_summary["command_executed"] = False
             result_summary["edge_status"] = "blocked_by_safety_policy"

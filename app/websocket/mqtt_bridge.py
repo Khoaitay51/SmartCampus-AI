@@ -406,40 +406,14 @@ async def _run_agent_task(
         tool_name_lower = tool_name.lower()
         confidence = float(response.recommendation.confidence or 0.0)
 
+        from app.campus.autonomy import decide_autonomy
+
         hitl_active = is_hitl_enabled()
-
-        # TIERED AUTONOMY SAFETY POLICY:
-        # 1. Tier-2 Critical Safety Tools (Cửa / FSM / Chuông): TUYỆT ĐỐI không để Autopilot tự chạy!
-        TIER2_CRITICAL_TOOLS = {"set_door", "door_control", "set_mode", "mode_control", "trigger_buzzer", "buzzer_control"}
-        is_critical = tool_name_lower in TIER2_CRITICAL_TOOLS
-
-        # 2. Ngưỡng tin cậy tối thiểu cho Autopilot đối với các lệnh đảo nghịch được (Tier-1: quạt, đèn)
-        AUTOPILOT_MIN_CONFIDENCE = 0.8
-        has_min_conf = confidence >= AUTOPILOT_MIN_CONFIDENCE
-
-        # Quyết định xem có được phép tự động thi hành qua Autopilot hay không
-        if hitl_active:
-            can_autopilot = False
-            status_init = "pending"
-            review_notes = None
-            requires_conf = True
-        elif is_critical:
-            can_autopilot = False
-            status_init = "pending"
-            review_notes = f"🔒 [CHẶN AUTOPILOT]: Tool '{tool_name}' là hành động nhạy cảm an ninh (Cửa/FSM), bắt buộc Quản trị viên duyệt qua HITL."
-            requires_conf = True
-            logger.warning("🚨 [TIERED AUTONOMY] Chặn Autopilot đối với tool nhạy cảm: '%s'. Buộc chuyển sang HITL approval.", tool_name)
-        elif not has_min_conf:
-            can_autopilot = False
-            status_init = "pending"
-            review_notes = f"⚠️ [CHẶN AUTOPILOT]: Độ tin cậy AI ({confidence:.2f}) chưa đạt ngưỡng an toàn ({AUTOPILOT_MIN_CONFIDENCE}), cần con người xác nhận."
-            requires_conf = True
-            logger.info("ℹ️ [TIERED AUTONOMY] Tool '%s' có confidence %.2f < %.2f. Chuyển sang HITL approval.", tool_name, confidence, AUTOPILOT_MIN_CONFIDENCE)
-        else:
-            can_autopilot = True
-            status_init = "auto_approved"
-            review_notes = f"⚡ Tự động phê duyệt qua Autopilot (Tier-1 Reversible Tool, Conf: {confidence:.2f} >= {AUTOPILOT_MIN_CONFIDENCE})"
-            requires_conf = False
+        can_autopilot, status_init, review_notes, requires_conf = decide_autonomy(
+            tool_name=tool_name,
+            confidence=confidence,
+            hitl_active=hitl_active,
+        )
 
         # --- HITL Consent-Integrity + physical-TOCTOU binding ---
         from app.campus.binding import compute_payload_hash, with_binding
