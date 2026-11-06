@@ -250,7 +250,14 @@ MODE_PERMISSIONS: dict[str, set[str]] = {
 
 
 def is_tool_allowed_in_mode(tool_name: str, room_mode: str) -> bool:
-    """Kiểm tra xem tool có được phép thực thi trong chế độ phòng hiện tại hay không."""
+    """Kiểm tra xem tool có được phép thực thi trong chế độ phòng hiện tại hay không.
+    Khi SAFETY_FSM_ENABLED=False, mọi action tool hợp lệ đều được phép chạy global ở mọi mode.
+    """
+    from app.config.safety import fsm_enabled
+
+    if not fsm_enabled():
+        return tool_name in ALLOWED_ACTION_TOOLS
+
     normalized_mode = (room_mode or "").upper().strip()
     if normalized_mode in MODE_PERMISSIONS:
         return tool_name in MODE_PERMISSIONS[normalized_mode]

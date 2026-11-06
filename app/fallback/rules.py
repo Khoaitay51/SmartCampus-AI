@@ -40,6 +40,11 @@ _ALWAYS_SAFE_UNKNOWN_MODE = {"send_alert"}
 
 
 def is_tool_allowed_in_mode(mode: str | None, tool_name: str) -> bool:
+    from app.config.safety import fsm_enabled
+
+    if not fsm_enabled():
+        return True
+
     mode = (mode or "").upper()
     if mode not in KNOWN_MODES:
         # Không biết phòng đang ở chế độ nào (có thể là EXAM) => chỉ cho phép gửi cảnh báo
