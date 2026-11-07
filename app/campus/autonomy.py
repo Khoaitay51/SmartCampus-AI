@@ -86,3 +86,4 @@ def decide_autonomy(
         f"(Tier-1 Reversible Tool, Conf: {conf:.2f} >= {AUTOPILOT_MIN_CONFIDENCE})"
     )
     return True, "auto_approved", notes, False
+

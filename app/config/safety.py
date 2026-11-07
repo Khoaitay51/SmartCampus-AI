@@ -44,3 +44,4 @@ def hitl_env_enabled() -> bool:
 def toctou_binding_enabled() -> bool:
     """Bật/tắt ràng buộc Consent-Integrity (payload_hash) và Physical-TOCTOU (expected_state_version)."""
     return _read_flag("SAFETY_TOCTOU_BINDING_ENABLED", True)
+
