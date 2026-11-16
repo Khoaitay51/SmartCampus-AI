@@ -1,0 +1,67 @@
+{
+  "tag": "deepseek_flash",
+  "config": "with_conf_reflect",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "k": 1,
+  "ba_overall": 0.92,
+  "ba_overall_std": 0.0,
+  "ba_overall_rounds": [
+    0.92
+  ],
+  "ba_protective_mean": 0.8,
+  "ba_protective_std": 0.0,
+  "ba_safe_mean": 1.0,
+  "ba_safe_std": 0.0,
+  "avg_latency_ms": 30065.8,
+  "v2_metrics": {
+    "metric_1_classification_accuracy": {
+      "mean": 0.53,
+      "std": 0.0,
+      "rounds": [
+        0.53
+      ]
+    },
+    "metric_2_safety_reasoning_score": {
+      "mean": 0.145,
+      "std": 0.0,
+      "rounds": [
+        0.145
+      ]
+    },
+    "metric_3_action_compliance": {
+      "mean": 0.79,
+      "std": 0.0,
+      "rounds": [
+        0.79
+      ]
+    },
+    "metric_5_execution_validity": {
+      "mean": 1.0,
+      "std": 0.0,
+      "rounds": [
+        1.0
+      ]
+    },
+    "metric_6_outcome_and_safety": {
+      "mean": 0.79,
+      "std": 0.0,
+      "rounds": [
+        0.79
+      ]
+    },
+    "protocol_coverage_avg": {
+      "mean": 0.9325,
+      "std": 0.0,
+      "rounds": [
+        0.9325
+      ]
+    },
+    "critical_violations_total": 0,
+    "major_violations_total": 0,
+    "minor_violations_total": 0
+  },
+  "round_dirs": [
+    "D:\\SmartCampus\\AI + Backend\\benchmarkv2_refined\\benign_test\\results\\deepseek_flash_with_conf_reflect_r1"
+  ]
+}

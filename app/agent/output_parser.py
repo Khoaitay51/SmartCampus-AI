@@ -19,14 +19,23 @@ _STEP_RE = re.compile(
 )
 
 
+def _strip_think_tags(text: str) -> str:
+    """Loại bỏ block <think>...</think> nếu reasoning model local tự phát sinh."""
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    cleaned = re.sub(r"<think>.*$", "", cleaned, flags=re.DOTALL)
+    return cleaned.strip()
+
+
 def _normalize_react_output(text: str) -> str:
     """Soft-repair: cố normalise text trước khi đưa vào regex chính.
 
     Xử lý các biến thể phổ biến mà model hay trả:
+    - Strip <think>...</think> của reasoning models
     - Strip ``` markdown fences bao quanh toàn bộ output
     - Chuẩn hoá field thừa xuống dòng (JSON nhiều dòng trong Action Input)
     Không thay đổi ngữ nghĩa; chỉ căn chỉnh whitespace & label.
     """
+    text = _strip_think_tags(text)
     # Strip code fences toàn bộ nếu có
     text = re.sub(r"^```(?:json|text|)?\n?", "", text.strip(), flags=re.MULTILINE)
     text = re.sub(r"\n?```$", "", text.strip(), flags=re.MULTILINE)
@@ -104,7 +113,7 @@ class ReviewResult:
 
 
 def _strip_code_fence(text: str) -> str:
-    text = text.strip()
+    text = _strip_think_tags(text)
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\n?", "", text)
         text = re.sub(r"\n?```$", "", text)
@@ -112,10 +121,17 @@ def _strip_code_fence(text: str) -> str:
 
 
 def parse_review_output(raw_text: str) -> ReviewResult:
+    cleaned = _strip_code_fence(raw_text)
     try:
-        data = json.loads(_strip_code_fence(raw_text))
+        data = json.loads(cleaned)
     except json.JSONDecodeError as e:
-        raise OutputParseError(f"Review output không phải JSON hợp lệ: {e}") from e
+        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+        if not match:
+            raise OutputParseError(f"Review output không phải JSON hợp lệ: {e}") from e
+        try:
+            data = json.loads(_repair_json(match.group(0)))
+        except json.JSONDecodeError:
+            raise OutputParseError(f"Review output không phải JSON hợp lệ: {e}") from e
 
     status = data.get("status")
     if status not in {"Accomplished", "Partially Accomplished", "Not Accomplished"}:

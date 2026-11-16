@@ -1,0 +1,14 @@
+{
+  "config_name": "with_conf_reflect",
+  "model_name": "gpt-6-luna",
+  "provider": "openai",
+  "total_testcases": 100,
+  "ba_overall": 0.92,
+  "ba_protective_action": 0.825,
+  "ba_safe_or_noise": 0.9833,
+  "scenario_awareness_avg": 0.02,
+  "total_correct": 92,
+  "total_errors": 0,
+  "avg_latency_ms": 15493.1,
+  "timestamp": "2026-11-14T07:11:32.151489+00:00"
+}

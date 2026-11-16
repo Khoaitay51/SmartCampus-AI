@@ -14,16 +14,42 @@ class Settings(BaseSettings):
     )
 
     # llm
-    LLM_PROVIDER: str = Field(default="gemini", description="Provider chính: 'gemini' hoặc 'ollama'")
+    LLM_PROVIDER: str = Field(default="gemini", description="Provider chính: 'gemini', 'ollama' hoặc 'deepseek'")
     GEMINI_API_KEY: str = Field(default="", description="API key cho Google Gemini")
-    AGENT: str = Field(default="gemini-3.5-flash-lite", description="Model Gemini dùng cho ReAct/Review/Reflect")
+    AGENT: str = Field(default="gemini-3.5-flash-lite", description="Model LLM mặc định dùng cho ReAct/Review/Reflect")
+    
+    # DeepSeek API
+    DEEPSEEK_API_KEY: str = Field(default="", description="API key cho DeepSeek API")
+    DEEPSEEK_BASE_URL: str = Field(default="https://api.deepseek.com", description="Base URL cho DeepSeek API")
+    DEEPSEEK_MODEL: str = Field(default="deepseek-flash", description="Model DeepSeek (vd: deepseek-flash, deepseek-chat)")
+    DEEPSEEK_MAX_TOKENS: int = Field(default=4096, description="Max output tokens cho DeepSeek (đủ cho reasoning + response)")
+    DEEPSEEK_REASONING_EFFORT: str = Field(default="none", description="Reasoning effort cho DeepSeek (none, low, high)")
+    
+    # OpenAI Config (hoặc OpenAI-compatible proxy)
+    OPENAI_API_KEY: str = Field(default="", description="API key cho OpenAI")
+    OPENAI_BASE_URL: str = Field(default="https://api.openai.com/v1", description="Base URL cho OpenAI API")
+    OPENAI_MODEL: str = Field(default="gpt-4o", description="Model OpenAI mặc định (vd: gpt-4o, gpt-6-luna)")
+    OPENAI_MAX_TOKENS: int = Field(default=4096, description="Max output tokens cho OpenAI")
+
+    # Anthropic Config (Claude)
+    ANTHROPIC_API_KEY: str = Field(default="", description="API key cho Anthropic Claude")
+    ANTHROPIC_BASE_URL: str = Field(default="https://api.anthropic.com", description="Base URL cho Anthropic API")
+    ANTHROPIC_MODEL: str = Field(default="claude-haiku-5-5", description="Model Anthropic mặc định (vd: claude-haiku-5-5)")
+    ANTHROPIC_MAX_TOKENS: int = Field(default=4096, description="Max output tokens cho Anthropic")
+
+    # Zhipu AI (GLM) Config
+    ZHIPU_API_KEY: str = Field(default="", description="API key cho Zhipu AI (GLM)")
+    ZHIPU_BASE_URL: str = Field(default="https://open.bigmodel.cn/api/paas/v4", description="Base URL cho Zhipu AI API")
+    ZHIPU_MODEL: str = Field(default="glm-5.3-flash", description="Model Zhipu AI mặc định (vd: glm-5.3-flash)")
+    ZHIPU_MAX_TOKENS: int = Field(default=4096, description="Max output tokens cho Zhipu AI")
+    ZHIPU_REASONING_EFFORT: str = Field(default="low", description="Reasoning effort cho Zhipu AI (low, high, max)")
     
     # Ollama Local SLM & Embeddings
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434", description="Base URL cho Ollama service")
     OLLAMA_MODEL: str = Field(default="qwen2:1.5b", description="Model SLM cho Ollama (vd: qwen2:1.5b, qwen2:0.5b)")
     OLLAMA_EMBEDDING_MODEL: str = Field(default="nomic-embed-text", description="Model embedding chạy trên Ollama")
     OLLAMA_FALLBACK_MODEL: str = Field(default="qwen2:1.5b", description="Model SLM Ollama dùng khi fallback")
-    OLLAMA_NUM_CTX: int = Field(default=16384, description="Context window size cho Ollama")
+    OLLAMA_NUM_CTX: int = Field(default=32768, description="Context window size cho Ollama")
 
     # db.py (PostgreSQL với pgvector)
     DATABASE_URL: str = Field(

@@ -1,0 +1,14 @@
+{
+  "config_name": "with_conf_reflect",
+  "model_name": "deepseek-flash",
+  "provider": "deepseek",
+  "total_testcases": 100,
+  "ba_overall": 0.92,
+  "ba_protective_action": 0.8,
+  "ba_safe_or_noise": 1.0,
+  "scenario_awareness_avg": 0.145,
+  "total_correct": 92,
+  "total_errors": 0,
+  "avg_latency_ms": 30065.8,
+  "timestamp": "2026-11-13T03:11:25.846984+00:00"
+}

@@ -1,8 +1,8 @@
 """
 app/llm/ollama.py
 -----------------
-Client kết nối Ollama API phục vụ ReActXenAgent với các mô hình SLM (Small Language Models)
-như Qwen 1.5B (qwen2:1.5b), Qwen 0.5B, hoặc Llama.
+Client kết nối Ollama API phục vụ ReActXenAgent với các mô hình SLM/LLM local
+như Qwen2, Qwen2.5, Qwen3, hoặc Llama.
 """
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ class OllamaLLMClient(LLMClient):
         self.temperature = (
             temperature
             if temperature is not None
-            else _cfg("AGENT_TEMPERATURE", 0.1)
+            else _cfg("AGENT_TEMPERATURE", 0.0)
         )
         self.max_tokens = (
             max_tokens
@@ -53,7 +53,7 @@ class OllamaLLMClient(LLMClient):
         self.num_ctx = (
             num_ctx
             if num_ctx is not None
-            else _cfg("OLLAMA_NUM_CTX", 16384)
+            else _cfg("OLLAMA_NUM_CTX", 32768)
         )
         self.timeout = timeout
         self.stop_sequences = ["Observation:", "\nObservation:"]
@@ -61,10 +61,10 @@ class OllamaLLMClient(LLMClient):
     async def complete(self, system_prompt: str) -> str:
         """Gửi prompt tới Ollama và trả về chuỗi text hoàn chỉnh."""
         url = f"{self.base_url}/api/generate"
-        payload = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "system": system_prompt,
-            "prompt": "Hãy thực hiện ngay bước tiếp theo. Bắt đầu bằng định dạng:\nThought: [suy nghĩ của bạn]\nAction: [tên tool]\nAction Input: {...}",
+            "prompt": "Hãy thực hiện bước tiếp theo theo đúng định dạng được yêu cầu.",
             "stream": False,
             "options": {
                 "temperature": self.temperature,
@@ -73,10 +73,18 @@ class OllamaLLMClient(LLMClient):
                 "stop": self.stop_sequences,
             },
         }
+        think_cfg = _cfg("OLLAMA_THINK", None)
+        if think_cfg is not None:
+            payload["think"] = str(think_cfg).strip().lower() in {"1", "true", "yes"}
+        elif "qwen3" in self.model.lower():
+            payload["think"] = False
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 resp = await client.post(url, json=payload)
+                if resp.status_code == 400 and "think" in payload:
+                    payload.pop("think", None)
+                    resp = await client.post(url, json=payload)
                 resp.raise_for_status()
                 data = resp.json()
                 text = data.get("response", "")

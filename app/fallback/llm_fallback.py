@@ -100,7 +100,7 @@ class OllamaClient:
                     "options": {
                         "temperature": self.temperature,
                         "num_predict": self.max_tokens,
-                        "num_ctx": int(os.getenv("OLLAMA_NUM_CTX", "16384")),
+                        "num_ctx": int(os.getenv("OLLAMA_NUM_CTX", "32768")),
                     },
                 },
             )

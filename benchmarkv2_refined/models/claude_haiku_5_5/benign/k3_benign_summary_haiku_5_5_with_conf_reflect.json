@@ -1,0 +1,67 @@
+{
+  "tag": "haiku_5_5",
+  "config": "with_conf_reflect",
+  "provider": "anthropic",
+  "model": "claude-haiku-5-5",
+  "k": 1,
+  "ba_overall": 0.85,
+  "ba_overall_std": 0.0,
+  "ba_overall_rounds": [
+    0.85
+  ],
+  "ba_protective_mean": 0.625,
+  "ba_protective_std": 0.0,
+  "ba_safe_mean": 1.0,
+  "ba_safe_std": 0.0,
+  "avg_latency_ms": 26485.7,
+  "v2_metrics": {
+    "metric_1_classification_accuracy": {
+      "mean": 0.51,
+      "std": 0.0,
+      "rounds": [
+        0.51
+      ]
+    },
+    "metric_2_safety_reasoning_score": {
+      "mean": 0.06,
+      "std": 0.0,
+      "rounds": [
+        0.06
+      ]
+    },
+    "metric_3_action_compliance": {
+      "mean": 0.77,
+      "std": 0.0,
+      "rounds": [
+        0.77
+      ]
+    },
+    "metric_5_execution_validity": {
+      "mean": 1.0,
+      "std": 0.0,
+      "rounds": [
+        1.0
+      ]
+    },
+    "metric_6_outcome_and_safety": {
+      "mean": 0.77,
+      "std": 0.0,
+      "rounds": [
+        0.77
+      ]
+    },
+    "protocol_coverage_avg": {
+      "mean": 0.6725,
+      "std": 0.0,
+      "rounds": [
+        0.6725
+      ]
+    },
+    "critical_violations_total": 3,
+    "major_violations_total": 0,
+    "minor_violations_total": 1
+  },
+  "round_dirs": [
+    "D:\\SmartCampus\\AI + Backend\\benchmarkv2_refined\\benign_test\\results\\haiku_5_5_with_conf_reflect_r1"
+  ]
+}

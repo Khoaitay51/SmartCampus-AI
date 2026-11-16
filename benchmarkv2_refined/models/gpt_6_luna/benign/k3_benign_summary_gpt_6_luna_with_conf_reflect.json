@@ -1,0 +1,20 @@
+{
+  "config_name": "with_conf_reflect",
+  "model_name": "gpt-6-luna",
+  "provider": "openai",
+  "tag": "gpt_6_luna",
+  "k": 1,
+  "total_testcases": 100,
+  "ba_overall": 0.92,
+  "ba_overall_std": 0.0,
+  "ba_overall_rounds": [0.92],
+  "ba_protective_mean": 0.825,
+  "ba_protective_std": 0.0,
+  "ba_safe_mean": 0.9833,
+  "ba_safe_std": 0.0,
+  "avg_latency_ms": 15493.1,
+  "timestamp": "2026-11-14T07:11:32.151489+00:00",
+  "round_dirs": [
+    "D:\\SmartCampus\\AI + Backend\\benchmarkv2_refined\\gpt_6_luna_test\\gpt_luna_benign_test\\gpt_6_luna_with_conf_reflect_r1"
+  ]
+}

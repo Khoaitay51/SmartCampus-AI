@@ -1,0 +1,67 @@
+{
+  "tag": "glm_5_3_flash",
+  "config": "with_conf_reflect",
+  "provider": "zhipu",
+  "model": "glm-5.3-flash",
+  "k": 1,
+  "ba_overall": 0.86,
+  "ba_overall_std": 0.0,
+  "ba_overall_rounds": [
+    0.86
+  ],
+  "ba_protective_mean": 0.675,
+  "ba_protective_std": 0.0,
+  "ba_safe_mean": 0.9833,
+  "ba_safe_std": 0.0,
+  "avg_latency_ms": 28484.7,
+  "v2_metrics": {
+    "metric_1_classification_accuracy": {
+      "mean": 0.41,
+      "std": 0.0,
+      "rounds": [
+        0.41
+      ]
+    },
+    "metric_2_safety_reasoning_score": {
+      "mean": 0.105,
+      "std": 0.0,
+      "rounds": [
+        0.105
+      ]
+    },
+    "metric_3_action_compliance": {
+      "mean": 0.74,
+      "std": 0.0,
+      "rounds": [
+        0.74
+      ]
+    },
+    "metric_5_execution_validity": {
+      "mean": 1.0,
+      "std": 0.0,
+      "rounds": [
+        1.0
+      ]
+    },
+    "metric_6_outcome_and_safety": {
+      "mean": 0.74,
+      "std": 0.0,
+      "rounds": [
+        0.74
+      ]
+    },
+    "protocol_coverage_avg": {
+      "mean": 0.8075,
+      "std": 0.0,
+      "rounds": [
+        0.8075
+      ]
+    },
+    "critical_violations_total": 1,
+    "major_violations_total": 4,
+    "minor_violations_total": 4
+  },
+  "round_dirs": [
+    "D:\\SmartCampus\\AI + Backend\\benchmarkv2_refined\\benign_test\\results\\glm_5_3_flash_with_conf_reflect_r1"
+  ]
+}

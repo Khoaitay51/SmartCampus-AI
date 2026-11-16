@@ -1,0 +1,14 @@
+{
+  "config_name": "with_conf_reflect",
+  "model_name": "glm-5.3-flash",
+  "provider": "zhipu",
+  "total_testcases": 5,
+  "ba_overall": 1.0,
+  "ba_protective_action": 0.0,
+  "ba_safe_or_noise": 1.0,
+  "scenario_awareness_avg": 0.0,
+  "total_correct": 5,
+  "total_errors": 0,
+  "avg_latency_ms": 21978.4,
+  "timestamp": "2026-11-15T14:47:03.667720+00:00"
+}
