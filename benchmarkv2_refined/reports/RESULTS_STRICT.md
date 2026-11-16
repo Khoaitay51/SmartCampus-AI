@@ -1,5 +1,7 @@
 # Kết quả chấm lại theo Ground Truth chuẩn (GROUND_TRUTH_ATTACK.md v2.1.0)
 
+> ⚠️ **Tài liệu lưu trữ (số liệu cũ).** Số trong file này chấm theo ground truth trước v2.2.0: bản v2.1 bắt buộc còi hoặc EMERGENCY ở U2, lệch với system prompt; một số bảng còn có cả luật L0. **Số chuẩn hiện hành: `BENCHMARK_RESULTS.md` (GT v2.2.0).** Số v2.1 được lưu ở `scored/archive_gt_v2_1/`.
+
 > **Ghi chú nội bộ:** cột "STRICT" trong file này là số theo ground truth chuẩn v2.1.0 (spec ở `framework/ground_truth/GROUND_TRUTH_ATTACK.md`). Cột "L0" là luật chấm cũ v2.0.0, chỉ giữ để đối chiếu với số đã báo cáo trước đây.
 
 **Luật áp dụng:**

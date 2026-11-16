@@ -74,20 +74,26 @@ def run_round(
     return True
 
 
-def synthesize(rounds: list[str], attack_runs: Path, out_dir: Path, twin_root: Path) -> None:
-    print(f"\n{'='*70}\n>>> SYNTHESIZING K=3 CLEAN TWIN SUP WITH clean_twin_sup.py\n{'='*70}", flush=True)
-    twin_paths = [str(twin_root / rid / "raw_runs.jsonl") for rid in rounds]
+def synthesize(rounds: list[str], attack_runs: list[Path], out_dir: Path, twin_root: Path, label: str) -> None:
+    """Chấm theo ground truth chuẩn (STRICT). Script cũ analysis/clean_twin_sup.py dùng luật L0, không dùng nữa."""
+    print(f"\n{'='*70}\n>>> SYNTHESIZING CLEAN TWIN SUP (GT chuẩn STRICT)\n{'='*70}", flush=True)
+    twin_paths = [twin_root / rid / "raw_runs.jsonl" for rid in rounds]
+    missing = [str(p) for p in twin_paths + list(attack_runs) if not p.exists()]
+    if missing:
+        print(f"[!] Thiếu file, không tổng hợp: {missing}", flush=True)
+        sys.exit(1)
 
     cmd = [
         PYTHON_EXE,
-        str(ADV_DIR / "analysis" / "clean_twin_sup.py"),
-        "--twin-runs", *twin_paths,
-        "--attack-runs", str(attack_runs),
+        str(ADV_DIR.parent / "ground_truth" / "analyze_clean_twin_sup_v2.py"),
+        "--label", label,
+        "--twin-runs", *map(str, twin_paths),
+        "--attack-runs", *map(str, attack_runs),
         "--out", str(out_dir),
     ]
     res = subprocess.run(cmd, cwd=str(AI_BACKEND), env=ENV)
     if res.returncode == 0:
-        print(f"[✓] Synthesis successful! Report at: {out_dir / 'clean_twin_sup_report.md'}", flush=True)
+        print(f"[✓] Synthesis successful! Report at: {out_dir / 'clean_twin_sup_v2.md'}", flush=True)
     else:
         print(f"[!] Synthesis error (code={res.returncode})", flush=True)
 
@@ -99,7 +105,8 @@ def main():
     parser.add_argument("--model", default="gemini-3.5-flash-lite", help="Tên model (vd: deepseek-flash, qwen2.5:7b, qwen3:8b)")
     parser.add_argument("--tag", default=None, help="Prefix tên model (vd: deepseek_flash, qwen25_7b)")
     parser.add_argument("--timeout", type=float, default=180.0)
-    parser.add_argument("--attack-runs", type=Path, default=None, help="Path tới raw_runs.jsonl lượt attack r1 của model này")
+    parser.add_argument("--attack-runs", type=Path, nargs="+", default=None,
+                        help="raw_runs.jsonl nhánh A (mặc định: mọi <tag>_adv_rN đã có của model; chỉ dùng run môi trường E2)")
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--use-mock-rag", action="store_true", default=False)
@@ -112,12 +119,22 @@ def main():
     twin_root = mdir / "clean_twin_sup"
     if tag:
         rounds = [f"{tag}_clean_twin_sup_r1", f"{tag}_clean_twin_sup_r2", f"{tag}_clean_twin_sup_r3"]
-        default_attack = mdir / "attack_advanced" / f"{tag}_adv_r1" / "raw_runs.jsonl"
-        default_out = twin_root / f"out_clean_twin_sup_{tag}"
+        atk_prefix = f"{tag}_adv_r"
+        default_out = MODELS_DIR.parent / "reports" / "scored" / "clean_twin_sup" / _slugify(args.model)
     else:
         rounds = ["clean_twin_sup_r1", "clean_twin_sup_r2", "clean_twin_sup_r3"]
-        default_attack = mdir / "attack_advanced" / "advanced_benchmark_r1" / "raw_runs.jsonl"
-        default_out = twin_root / "out_clean_twin_sup"
+        atk_prefix = "advanced_benchmark_r"
+        default_out = MODELS_DIR.parent / "reports" / "scored" / "clean_twin_sup" / _slugify(args.model)
+    # Nhánh A: mọi run attack hoàn chỉnh <prefix><số> (bỏ pilot, *_incomplete)
+    default_attack = sorted(
+        p / "raw_runs.jsonl" for p in (mdir / "attack_advanced").glob(f"{atk_prefix}*")
+        if p.name[len(atk_prefix):].isdigit() and (p / "raw_runs.jsonl").exists()
+    )
+
+    # Cờ STOP_AFTER_R2.flag làm runner thoát (mã 0) ở mọi run có "r3" -> round 3 bị bỏ qua mà không báo lỗi
+    if (ADV_DIR / "STOP_AFTER_R2.flag").exists() and not args.synthesize_only:
+        print(f"[STOP] Đang có {ADV_DIR / 'STOP_AFTER_R2.flag'}: round r3 sẽ bị bỏ qua. Xoá cờ này rồi chạy lại.", flush=True)
+        sys.exit(1)
 
     # Không ghi đè kết quả đã có
     for rid in rounds:
@@ -126,6 +143,10 @@ def main():
             sys.exit(1)
 
     attack_runs = args.attack_runs or default_attack
+    if not attack_runs:
+        print(f"[STOP] Không tìm thấy run attack {atk_prefix}N trong {mdir / 'attack_advanced'}. Kiểm tra --tag hoặc truyền --attack-runs.", flush=True)
+        sys.exit(1)
+    print(f"Nhánh A dùng: {[str(p) for p in attack_runs]}", flush=True)
     out_dir = args.out or default_out
 
     print(f"Launching K=3 Clean Twin SUP: provider={args.provider}, model={args.model}, rounds={rounds}", flush=True)
@@ -144,7 +165,8 @@ def main():
                 print(f"[!] Pipeline halted due to error in {rid}.", flush=True)
                 sys.exit(1)
 
-    synthesize(rounds=rounds, attack_runs=attack_runs, out_dir=out_dir, twin_root=twin_root)
+    synthesize(rounds=rounds, attack_runs=attack_runs, out_dir=out_dir, twin_root=twin_root,
+               label=_slugify(args.model))
     print("\n[✓] ALL K=3 CLEAN TWIN SUP RUNS AND SYNTHESIS COMPLETED!", flush=True)
 
 

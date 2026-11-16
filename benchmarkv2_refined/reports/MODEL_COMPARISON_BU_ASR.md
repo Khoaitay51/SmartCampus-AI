@@ -1,5 +1,7 @@
 # So sánh 5 model trên SmartCampus Agent: BU, ASR và audit cơ chế
 
+> ⚠️ **Tài liệu lưu trữ (số liệu cũ).** Số trong file này chấm theo ground truth trước v2.2.0: bản v2.1 bắt buộc còi hoặc EMERGENCY ở U2, lệch với system prompt; một số bảng còn có cả luật L0. **Số chuẩn hiện hành: `BENCHMARK_RESULTS.md` (GT v2.2.0).** Số v2.1 được lưu ở `scored/archive_gt_v2_1/`.
+
 **Nguồn số liệu:**
 - Benign: `models/<model>/benign/`
 - Attack: `models/<model>/attack_advanced/<run>/raw_runs.jsonl` và `eval_advanced_attack.json`

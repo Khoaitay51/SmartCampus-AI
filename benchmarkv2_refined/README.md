@@ -5,14 +5,15 @@ Thư mục chia làm 3 phần:
 - **`models/<model>/`**: toàn bộ kết quả của một model (benign, attack, clean-twin, log).
 - **`reports/`**: báo cáo tổng hợp, so sánh giữa các model.
 
-Ground truth duy nhất: [`framework/ground_truth/GROUND_TRUTH_ATTACK.md`](framework/ground_truth/GROUND_TRUTH_ATTACK.md) (v2.1.0). Số liệu chuẩn là số chấm theo spec này.
+Ground truth duy nhất: [`framework/ground_truth/GROUND_TRUTH_ATTACK.md`](framework/ground_truth/GROUND_TRUTH_ATTACK.md) (v2.2.0). Số liệu chuẩn là số chấm theo spec này.
 
 ```
 benchmarkv2_refined/
 ├── framework/
 │   ├── ground_truth/        GROUND_TRUTH_ATTACK.md (chuẩn), GROUND_TRUTH_BENIGN.md,
 │   │                        ground_truth_v2.json (tập hành động ưu tiên, đồng nghĩa, chất lượng alert),
-│   │                        evaluate_advanced_attack_v2.py, evaluate_benign_strict.py   ← evaluator chuẩn
+│   │                        evaluate_advanced_attack_v2.py, evaluate_benign_strict.py,
+│   │                        analyze_clean_twin_sup_v2.py   ← evaluator chuẩn
 │   ├── benign/              data/ (benign_v2_testcases.json), runner/, evaluator/, agents/, tests/,
 │   │                        run_benign_k3_pipeline.py
 │   ├── attack_advanced/     data/ (advanced_attack_testcases.json, clean_twin_sup_testcases.json, attackers),
@@ -30,7 +31,7 @@ benchmarkv2_refined/
 │   └── glm_5_3_flash/           benign/, attack_advanced/, logs/
 └── reports/
     ├── MODEL_COMPARISON_BU_ASR.md   so sánh BU, ASR, taxonomy giữa các model
-    ├── RESULTS_STRICT.md            kết quả theo ground truth chuẩn (cột STRICT)
+    ├── BENCHMARK_RESULTS.md         **kết quả chính** (6 model, GT v2.2.0)
     ├── CLEAN_TWIN_PLAN.md           kế hoạch clean-twin SUP (checklist)
     ├── scored/                      output của evaluator chuẩn (attack_advanced/, benign/, clean_twin_sup_gemini/)
     └── summary_report/              báo cáo tổng kết (.md/.docx), hướng dẫn chạy local
@@ -47,16 +48,18 @@ python benchmarkv2_refined/framework/benign/run_benign_k3_pipeline.py --provider
 # Advanced attack k=3
 python benchmarkv2_refined/framework/attack_advanced/run_advanced_attack_k3_pipeline.py --provider anthropic --model claude-haiku-5-5 --tag haiku_5_5 --benign-baseline 0.85
 
-# Clean-twin SUP k=3 (có thể dùng --dataset để chạy file con)
+# Clean-twin SUP k=3 (có thể dùng --dataset để chạy file con). Tự chấm theo GT chuẩn khi chạy xong.
 python benchmarkv2_refined/framework/attack_advanced/run_clean_twin_k3_pipeline.py --provider zhipu --model glm-5.3-flash --tag glm_5_3_flash
 ```
+
+Lệnh chạy và tag của từng model: `reports/CLEAN_TWIN_PLAN.md` mục 4.3.
 
 **Cơ chế bảo vệ dữ liệu:**
 - Runner ghi nối tiếp (append) và resume `raw_runs.jsonl`, không xoá dữ liệu cũ.
 - `synthesize_attack_k3.py` không ghi đè báo cáo tổng hợp đã có; nếu trùng tên, file mới được thêm hậu tố thời gian.
 - Pipeline clean-twin dừng lại nếu thư mục run đã tồn tại.
 
-**Lưu ý:** file `framework/attack_advanced/STOP_AFTER_R2.flag` đang tồn tại, nên mọi run có `r3` trong tên sẽ bị dừng. Xoá file này nếu muốn chạy đủ k=3.
+**Lưu ý:** file `framework/attack_advanced/STOP_AFTER_R2.flag` đang tồn tại, nên mọi run có `r3` trong tên sẽ bị dừng. Xoá file này nếu muốn chạy đủ k=3; pipeline clean-twin sẽ từ chối chạy nếu cờ này còn.
 
 ## Chấm điểm theo ground truth chuẩn (từ thư mục `benchmarkv2_refined/`)
 
