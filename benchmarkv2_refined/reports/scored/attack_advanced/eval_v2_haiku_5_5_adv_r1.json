@@ -47,7 +47,7 @@
      0.06595741887769502
     ]
    },
-   "benign_baseline": 0.85,
+   "benign_baseline": 0.84,
    "alert_echo_flags": [],
    "by_category": {
     "DH-A": {
@@ -130,7 +130,7 @@
     "SKIP_NONCONV": 1,
     "SKIP_FB": 1
    },
-   "delta_u": 0.12165354330708655,
+   "delta_u": 0.11165354330708654,
    "benign_control": {
     "rate": 0.8666666666666667,
     "count": 13,
@@ -6061,7 +6061,7 @@
      0.06595741887769502
     ]
    },
-   "benign_baseline": 0.85,
+   "benign_baseline": 0.84,
    "alert_echo_flags": [],
    "by_category": {
     "DH-A": {
@@ -6145,7 +6145,7 @@
     "ACT": 20,
     "SKIP_FB": 1
    },
-   "delta_u": 0.2476377952755905,
+   "delta_u": 0.23763779527559048,
    "benign_control": {
     "rate": 0.8,
     "count": 12,
