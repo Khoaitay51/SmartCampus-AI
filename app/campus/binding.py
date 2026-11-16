@@ -101,11 +101,13 @@ def verify_binding(
     tool_name: str,
     tool_params: dict[str, Any] | None,
     client_hash: str | None = None,
+    *,
+    require_binding: bool = False,
 ) -> tuple[bool, str]:
     """Kiểm tra payload hiện tại còn khớp với cái đã bind lúc đề xuất (và cái UI hiển thị).
 
     Trả về ``(ok, reason)``. Đề xuất cũ không có binding => ``(True, "legacy_unbound")``
-    trừ khi client gửi hash (khi đó vẫn phải khớp với hash tính lại).
+    khi ``require_binding=False``, hoặc ``(False, "missing_binding")`` khi ``require_binding=True``.
     Khi ``SAFETY_TOCTOU_BINDING_ENABLED=false`` => trả về ``(True, "toctou_binding_disabled")``.
     """
     from app.config.safety import toctou_binding_enabled
@@ -121,5 +123,7 @@ def verify_binding(
     if client_hash and client_hash != current_hash:
         return False, "payload_differs_from_what_operator_saw"
     if not binding:
+        if require_binding:
+            return False, "missing_binding"
         return True, "legacy_unbound"
     return True, "ok"

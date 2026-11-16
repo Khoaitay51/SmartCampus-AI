@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     BACKEND_BASE_URL: str = Field(default="http://smartcampus-api:8000", description="Base URL của SmartCampus backend chính")
     GATEWAY_BASE_URL: str = Field(default="http://smartcampus-api:8000/api", description="Base URL kết nối Edge Gateway API")
     BACKEND_SERVICE_TOKEN: str = Field(default="", description="Service token agent dùng để gọi backend")
+    EDGE_INTERNAL_TOKEN: str = Field(default="", description="Shared internal header token gửi tới Edge command API")
     USE_MOCK_RAG: bool = Field(default=False, description="Tự động dùng Mock Data cho RAG tools khi backend offline")
 
     # logging/audit.py
@@ -70,6 +71,14 @@ class Settings(BaseSettings):
 
     # Benchmark v2 Feature Flags (QĐ-7, QĐ-9; mặc định TẮT an toàn)
     BENCHMARK_MODE: bool = Field(default=False, description="Kích hoạt chế độ Benchmark v2")
+    BENCHMARK_DISABLE_LTM: bool = Field(
+        default=False,
+        description="Tắt truy vấn pgvector LTM trong benchmark để tránh nhiễu giữa các lượt chạy",
+    )
+    DISABLE_FALLBACK: bool = Field(
+        default=False,
+        description="Tắt silent rule fallback khi đo chất lượng LLM thuần (raise lỗi thay vì rơi xuống rules)",
+    )
     BENCHMARK_REFERENCE_TIME: str | None = Field(
         default=None,
         description="Mốc thời gian tham chiếu T0 cố định dạng ISO 8601 (vd: 2026-11-02T09:15:00+07:00)",

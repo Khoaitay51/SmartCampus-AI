@@ -51,6 +51,12 @@ def _edge_commands_base() -> str:
     return f"{base_edge_url}/commands" if base_edge_url.endswith("/api") else f"{base_edge_url}/api/commands"
 
 
+def edge_internal_headers() -> dict[str, str]:
+    """Return internal authentication headers when EDGE_INTERNAL_TOKEN is configured."""
+    token = (getattr(settings, "EDGE_INTERNAL_TOKEN", "") or "").strip()
+    return {"X-Edge-Internal-Token": token} if token else {}
+
+
 async def fetch_edge_state_snapshot(room_id: UUID | str | None) -> dict[str, Any] | None:
     """Lấy ``{mode, state_version}`` hiện tại của phòng từ Edge (best-effort, timeout ngắn).
 
@@ -143,13 +149,11 @@ async def dispatch_tool_execution(
             "expected_state_version": expected_state_version if toctou_active else None,
         }
 
-        edge_accepted = False
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 logger.info("Đang gửi lệnh sang Edge Gateway: %s với payload %s", execute_url, edge_payload)
-                resp = await client.post(execute_url, json=edge_payload)
+                resp = await client.post(execute_url, json=edge_payload, headers=edge_internal_headers())
                 if resp.status_code in (200, 202):
-                    edge_accepted = True
                     result_summary["command_executed"] = True
                     result_summary["edge_status"] = "success"
                     result_summary["edge_response"] = resp.json()
@@ -166,29 +170,8 @@ async def dispatch_tool_execution(
         except Exception as exc:
             logger.error("Không thể kết nối sang Edge Gateway (%s): %s", execute_url, exc)
             result_summary["edge_status"] = f"connection_failed: {str(exc)}"
-
-        # Phát MQTT dự phòng: CHỈ phát khi Edge Gateway chấp thuận (status 200/202).
-        # Tuyệt đối không phát MQTT nếu Edge Gateway đã từ chối (400/403 FSM Barrier)!
-        if edge_accepted:
-            try:
-                from app.websocket.mqtt_bridge import publish_mqtt_message
-                import uuid as _uuid
-                mqtt_topic = f"smartcampus/v1/command/room/{room_id_str}"
-                mqtt_payload = {
-                    "message_id": str(_uuid.uuid4()),
-                    "source_timestamp": datetime.now(timezone.utc).isoformat(),
-                    "payload": {
-                        "room_id": room_id_str,
-                        "command_type": command_type,
-                        "command_value": command_value,
-                        "reason": edge_payload["reason"],
-                        "source": edge_payload["source"],
-                    },
-                }
-                await publish_mqtt_message(mqtt_topic, mqtt_payload)
-                logger.info("Đã phát lệnh điều khiển actuator tới MQTT %s: %s", mqtt_topic, mqtt_payload)
-            except Exception as mq_err:
-                logger.warning("Không thể phát MQTT trực tiếp cho actuator: %s", mq_err)
+        # Edge Gateway is the single authoritative publisher for /command/room/{room_id}
+        # (including command_id tracking) once it commits and returns 200/202.
 
     # Broadcast sự kiện tới toàn bộ client qua WebSocket
     ws_payload = {

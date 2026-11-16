@@ -51,6 +51,10 @@ async def evaluate_with_fallback(
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001 - mọi lỗi agent đều phải có đường lui an toàn
+            from app.config.safety import fallback_disabled
+
+            if fallback_disabled():
+                raise
             logger.error("Agent thất bại (%s: %s) -> rule-based fallback", type(exc).__name__, exc)
             result = evaluate_by_rules(event, reason=f"{type(exc).__name__}: {exc}")
         return _annotate(result, trace)

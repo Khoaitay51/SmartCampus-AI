@@ -60,6 +60,11 @@ class BindingTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(why, "legacy_unbound")
 
+    def test_require_binding_rejects_unbound_recommendation(self):
+        ok, why = verify_binding(ROOM, "set_fan", {"state": "on"}, require_binding=True)
+        self.assertFalse(ok)
+        self.assertEqual(why, "missing_binding")
+
     def test_alert_content_is_bound(self):
         params = with_binding(ROOM, "send_alert", {"level": "info", "message": "ok"}, None, None)
         params["message"] = "evil"

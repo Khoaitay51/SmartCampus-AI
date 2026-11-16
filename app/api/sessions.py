@@ -71,7 +71,9 @@ async def create_session(
     if existing:
         raise HTTPException(status_code=409, detail="Room already has an active session")
 
-    now = datetime.now(timezone.utc)
+    from app.config.clock import get_current_time
+
+    now = get_current_time()
     session = RoomSession(
         room_id=data.room_id,
         lecturer_id=current_user.id if current_user.role == "lecturer" else None,
@@ -141,6 +143,7 @@ async def get_session_attendance(
 async def student_checkin(
     session_id: UUID,
     rfid_uid: str = Query(..., description="RFID UID của student"),
+    _staff: User = Depends(require_role("admin", "lecturer")),
     db: AsyncSession = Depends(get_async_db),
 ):
     """Internal: student check-in vào session (FR-RF-03, FR-SA-01).
@@ -174,7 +177,9 @@ async def student_checkin(
     if existing:
         return {"status": "already_checked_in", "student": user.username}
 
-    now = datetime.now(timezone.utc)
+    from app.config.clock import get_current_time
+
+    now = get_current_time()
     is_late = session.checkin_deadline and now > session.checkin_deadline
 
     record = AttendanceRecord(

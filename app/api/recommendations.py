@@ -180,7 +180,10 @@ async def execute_recommendation(
     Sau khi approve, hệ thống sẽ gửi lệnh thực thi xuống Edge Gateway
     và thiết bị phần cứng qua MQTT.
     """
-    rec = await db.get(AIRecommendation, rec_id)
+    result = await db.execute(
+        select(AIRecommendation).where(AIRecommendation.id == rec_id).with_for_update()
+    )
+    rec = result.scalar_one_or_none()
     if not rec:
         raise HTTPException(status_code=404, detail="Recommendation not found")
     if rec.status != "pending":
@@ -200,6 +203,7 @@ async def execute_recommendation(
             rec.tool_name,
             rec.tool_params,
             client_hash=data.payload_hash,
+            require_binding=True,
         )
         if not ok:
             logger.warning("HITL approve bị chặn cho rec %s: %s", rec_id, why)

@@ -160,13 +160,19 @@ class ReActXenAgent:
         )
 
     async def evaluate(self, event: EventPayload, context: OperationalContext) -> AgentResponse:
+        from app.config.safety import fallback_disabled
+
         with fallback_trace() as trace:
             try:
                 final_answer = await self._evaluate_internal(event, context, trace)
             except (AllProvidersFailed, ParsingExhausted) as exc:
+                if fallback_disabled():
+                    raise
                 logger.error("Guard kích hoạt Rule Fallback (%s: %s)", type(exc).__name__, exc)
                 return self._create_rule_fallback_response(event, trace, reason=str(exc))
             except Exception as exc:
+                if fallback_disabled():
+                    raise
                 logger.error("Lỗi agent evaluation (%s: %s) -> Rule Fallback", type(exc).__name__, exc)
                 return self._create_rule_fallback_response(event, trace, reason=f"{type(exc).__name__}: {exc}")
 
@@ -193,14 +199,19 @@ class ReActXenAgent:
             event.model_dump_json(), context.model_dump_json()
         )
 
-        event_type_str = getattr(event.event_type, "value", str(event.event_type))
-        context_text_for_ltm = (
-            f"Event: {event_type_str}. "
-            f"Context: {event.operational_context}"
-        )
-        past_experience_str = await retrieve_past_experience(context_text_for_ltm)
-        if past_experience_str:
-            logger.info("Đã lấy được kinh nghiệm từ LTM, inject vào prompt.")
+        from app.config.safety import benchmark_ltm_disabled
+
+        if benchmark_ltm_disabled():
+            past_experience_str = ""
+        else:
+            event_type_str = getattr(event.event_type, "value", str(event.event_type))
+            context_text_for_ltm = (
+                f"Event: {event_type_str}. "
+                f"Context: {event.operational_context}"
+            )
+            past_experience_str = await retrieve_past_experience(context_text_for_ltm)
+            if past_experience_str:
+                logger.info("Đã lấy được kinh nghiệm từ LTM, inject vào prompt.")
         state.past_experience = past_experience_str
 
         resilient_executor = ResilientToolExecutor(
@@ -247,7 +258,7 @@ class ReActXenAgent:
                 tool_calls_log=state.tool_calls_log,
             )
 
-        final_answer = self._final_safety_check(final_answer, context)
+        final_answer = self._final_safety_check(final_answer, context, event_type=event.event_type)
         final_answer.tool_calls_log = state.tool_calls_log
         final_answer.structured_trace = state.structured_trace
         return final_answer
@@ -487,9 +498,14 @@ class ReActXenAgent:
         )
         return await self._llm.complete(prompt)
 
-    # Safety re-check cuối cùng — chỉ reject khi confidence dưới ngưỡng tối thiểu.
-    # Permission enforcement là việc của Policy Engine phía sau, không tự reject ở đây.
-    def _final_safety_check(self, answer: AgentResponse, context: OperationalContext) -> AgentResponse:
+    # Safety re-check cuối cùng — kiểm tra ngưỡng confidence và ActionToolPolicy khi Prompt Guard bật.
+    # Permission enforcement theo FSM mode là việc của Edge Gateway phía sau.
+    def _final_safety_check(
+        self,
+        answer: AgentResponse,
+        context: OperationalContext | None,
+        event_type: Any | None = None,
+    ) -> AgentResponse:
         from app.config.safety import prompt_guard_enabled
 
         if not prompt_guard_enabled():
@@ -504,5 +520,16 @@ class ReActXenAgent:
             answer.recommendation = None
             answer.skip = True
             answer.skip_reason = f"final_safety_check_failed: {reason}"
+            return answer
+
+        if event_type is not None:
+            ctx_dict = context.model_dump(mode="json") if context is not None else None
+            violations = prompts.find_action_policy_violations(event_type, rec.tool_name, ctx_dict)
+            if violations:
+                reason = violations[0]
+                logger.warning("Final safety check reject action policy violation: %s", reason)
+                answer.recommendation = None
+                answer.skip = True
+                answer.skip_reason = f"final_safety_check_failed: {reason}"
 
         return answer

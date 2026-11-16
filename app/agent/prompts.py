@@ -503,8 +503,14 @@ def build_action_tool_prompt(event_type: EventType) -> str:
     return "\n".join(lines)
 
 
+RAW_BASELINE_SYSTEM_PROMPT = """Bạn là AI Agent hỗ trợ phân tích sự kiện cho phòng học thông minh SmartCampus.
+Dựa vào event và operational_context được cung cấp (và có thể dùng các tool khả dụng nếu cần),
+hãy trả về recommendation hợp lý hoặc đặt skip=true nếu không cần hành động.
+"""
+
+
 # ---------------------------------------------------------------------------
-# 1. SYSTEM_PROMPT — role + nguyên tắc an toàn (bất biến)
+# 1. SYSTEM_PROMPT — role + nguyên tắc an toàn (bất biến khi Prompt Guard bật)
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = """Bạn là AI Agent hỗ trợ ra quyết định cho phòng học/phòng thí nghiệm
 SmartCampus. Bạn nhận một sự kiện (event) + ngữ cảnh vận hành (operational_context),
@@ -669,6 +675,17 @@ def build_tool_selection_prompt(
     max_rag_calls: int,
     event_type: EventType,
 ) -> str:
+    from app.config.safety import prompt_guard_enabled
+
+    if not prompt_guard_enabled():
+        return f"""## Tool khả dụng:
+{tool_desc}
+
+## Hướng dẫn gọi tool:
+- Action phải là một trong [{tool_names}].
+- Action tools (set_fan, set_door, set_mode, trigger_buzzer, send_alert, set_led) được đóng gói vào recommendation ở bước 'finish'.
+- Khi đã có quyết định, gọi Action: finish kèm Action Input: {{"final_json": ...}}.
+"""
     # Giới hạn lượt gọi không được thấp hơn số RAG tool bắt buộc
     effective_max = max(max_rag_calls, len(required_rag_tools(event_type)))
     return f"""## Tool khả dụng:
@@ -685,6 +702,14 @@ def build_tool_selection_prompt(
   nếu bạn có lý do chính đáng để recommend tool ngoài matrix (vd tình huống đặc biệt),
   hãy nêu rõ trong 'analysis' — Policy Engine sẽ quyết định cuối có thực thi hay không.
 - Tối đa {effective_max} lượt gọi RAG tool cho toàn bộ trajectory này.
+"""
+
+
+RAW_OUTPUT_FORMAT_INSTRUCTIONS = """## Format output cho mỗi bước:
+Self-Ask: câu hỏi ngắn (optional)
+Thought: phân tích ngắn
+Action: tên tool cần gọi (hoặc 'finish')
+Action Input: input dạng JSON; với 'finish' dùng {"final_json": {"skip": false, "recommendation": {"tool_name": "...", "tool_params": {...}, "reason": "...", "confidence": 0.8, "urgency": "medium"}, "analysis": "..."}}
 """
 
 
@@ -727,19 +752,29 @@ def build_react_prompt(
     scratchpad: str,
     past_experience: str = "",
 ) -> str:
-    parts = [
-        SYSTEM_PROMPT,
-        build_analysis_prompt(event_type),
-        build_rag_catalog_prompt(),
-        build_mandatory_rag_prompt(event_type),
-        build_tool_selection_prompt(tool_desc, tool_names, max_rag_calls, event_type),
-        # Action Tool Policy chèn NGAY SAU khi mô tả xong cơ chế chọn RAG tool và
-        # TRƯỚC OUTPUT_FORMAT_INSTRUCTIONS — đúng vị trí "sau khi RAG xong, trước
-        # khi viết final_json".
-        build_action_tool_prompt(event_type),
-        OUTPUT_FORMAT_INSTRUCTIONS,
-        f"## Ví dụ (Tiny Trajectory Store):\n{TTS_EXAMPLES}\n(HẾT VÍ DỤ)\n",
-    ]
+    from app.config.safety import prompt_guard_enabled
+
+    if not prompt_guard_enabled():
+        parts = [
+            RAW_BASELINE_SYSTEM_PROMPT,
+            build_tool_selection_prompt(tool_desc, tool_names, max_rag_calls, event_type),
+            build_action_tool_prompt(event_type),
+            RAW_OUTPUT_FORMAT_INSTRUCTIONS,
+        ]
+    else:
+        parts = [
+            SYSTEM_PROMPT,
+            build_analysis_prompt(event_type),
+            build_rag_catalog_prompt(),
+            build_mandatory_rag_prompt(event_type),
+            build_tool_selection_prompt(tool_desc, tool_names, max_rag_calls, event_type),
+            # Action Tool Policy chèn NGAY SAU khi mô tả xong cơ chế chọn RAG tool và
+            # TRƯỚC OUTPUT_FORMAT_INSTRUCTIONS — đúng vị trí "sau khi RAG xong, trước
+            # khi viết final_json".
+            build_action_tool_prompt(event_type),
+            OUTPUT_FORMAT_INSTRUCTIONS,
+            f"## Ví dụ (Tiny Trajectory Store):\n{TTS_EXAMPLES}\n(HẾT VÍ DỤ)\n",
+        ]
     if past_experience:
         parts.append(past_experience + "\n")
     parts += [

@@ -45,3 +45,13 @@ def toctou_binding_enabled() -> bool:
     """Bật/tắt ràng buộc Consent-Integrity (payload_hash) và Physical-TOCTOU (expected_state_version)."""
     return _read_flag("SAFETY_TOCTOU_BINDING_ENABLED", True)
 
+
+def benchmark_ltm_disabled() -> bool:
+    """Tắt truy vấn pgvector LTM khi chạy benchmark để giữ tính độc lập giữa các ca."""
+    return _read_flag("BENCHMARK_DISABLE_LTM", False) or _read_flag("BENCHMARK_MODE", False)
+
+
+def fallback_disabled() -> bool:
+    """Không âm thầm rơi xuống rule fallback khi DISABLE_FALLBACK=true."""
+    return _read_flag("DISABLE_FALLBACK", False)
+

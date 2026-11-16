@@ -25,6 +25,50 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/rooms", tags=["Rooms"])
 
 
+async def _dispatch_room_command_via_edge(
+    room_id: UUID,
+    command_type: str,
+    command_value: str,
+    reason: str,
+) -> None:
+    """Validate and execute room command through Edge FSM before updating Backend state/MQTT."""
+    import httpx
+    from app.campus.hitl import edge_internal_headers
+    from app.config.settings import settings
+
+    base_edge_url = settings.BACKEND_BASE_URL.rstrip("/")
+    edge_exec_url = (
+        f"{base_edge_url}/commands/room/execute"
+        if base_edge_url.endswith("/api")
+        else f"{base_edge_url}/api/commands/room/execute"
+    )
+    payload = {
+        "room_id": str(room_id),
+        "command_type": command_type,
+        "command_value": command_value,
+        "reason": reason,
+        "source": "dtwin_admin",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(edge_exec_url, json=payload, headers=edge_internal_headers())
+    except Exception as exc:
+        logger.warning("Edge Gateway không phản hồi khi %s=%s: %s", command_type, command_value, exc)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Edge Gateway unavailable while validating {command_type}={command_value}",
+        ) from exc
+
+    if resp.status_code in (200, 202):
+        return
+
+    try:
+        detail = resp.json().get("detail", resp.text)
+    except ValueError:
+        detail = resp.text
+    raise HTTPException(status_code=resp.status_code, detail=detail)
+
+
 @router.get("", response_model=list[RoomResponse])
 async def list_rooms(
     _user: User = Depends(get_current_active_user),
@@ -119,34 +163,43 @@ async def update_room_state(
             detail="Cannot override LOCK mode with EMERGENCY (room is locked, no occupants)",
         )
 
-    # Lưu previous mode để restore sau EMERGENCY/EXAM
+    _MODE_ACTUATORS = {
+        "LOCK": (True, False),
+        "EMERGENCY": (False, False),
+        "EXAM": (True, True),
+        "SELF_STUDY": (False, True),
+        "LECTURE": (False, True),
+        "SAVING": (True, False),
+        "SUSPECTED": (False, False),
+    }
+    target_door_locked, target_fan_on = _MODE_ACTUATORS.get(
+        data.mode, (room.door_locked, room.fan_on)
+    )
+    fan_cmd_val = "on" if target_fan_on else "off"
+    door_cmd_val = "locked" if target_door_locked else "unlocked"
+
+    # Validate + execute via Edge FSM first so rejected transitions never mutate DB or publish MQTT.
+    await _dispatch_room_command_via_edge(
+        room_id,
+        "mode",
+        data.mode.lower(),
+        f"Manual mode update by {_admin.username}",
+    )
+    await _dispatch_room_command_via_edge(
+        room_id,
+        "fan",
+        fan_cmd_val,
+        f"Auto fan sync with mode {data.mode}",
+    )
+
     room.previous_mode = room.mode
     room.mode = data.mode
-
-    # Auto actuator control theo mode (FR-AC-01..03)
-    if data.mode == "LOCK":
-        room.door_locked = True
-        room.fan_on = False
-    elif data.mode == "EMERGENCY":
-        room.door_locked = False  # FR-AC-02: unlock ngay để thoát hiểm
-        room.fan_on = False       # Tắt quạt chống thổi lan khói
-    elif data.mode == "EXAM":
-        room.door_locked = True   # FR-AC-02: lock chốt trong giờ thi
-        room.fan_on = True
-    elif data.mode in ("SELF_STUDY", "LECTURE"):
-        room.door_locked = False  # Mở cửa cho sinh viên/giảng viên ra vào
-        room.fan_on = True        # Bật quạt thông gió vi khí hậu
-    elif data.mode == "SAVING":
-        room.door_locked = True   # Khóa cửa khi phòng trống
-        room.fan_on = False       # Tắt quạt tiết kiệm điện
-    elif data.mode == "SUSPECTED":
-        room.door_locked = False
-        room.fan_on = False
-
+    room.door_locked = target_door_locked
+    room.fan_on = target_fan_on
     await db.commit()
     await db.refresh(room)
 
-    # 1. Phát sự kiện WebSocket tới toàn bộ Digital Twin Web UI
+    # Broadcast WebSocket tới toàn bộ Digital Twin Web UI
     from app.websocket.manager import ws_manager
     await ws_manager.broadcast({
         "type": "room_mode_changed",
@@ -156,64 +209,6 @@ async def update_room_state(
         "door_locked": room.door_locked,
         "fan_on": room.fan_on,
     })
-
-    # 2. Publish MQTT thông báo cập nhật state & lệnh quạt/cửa trực tiếp xuống ESP32 phần cứng
-    from app.websocket.mqtt_bridge import publish_mqtt_message
-    from datetime import datetime, timezone
-    now_iso = datetime.now(timezone.utc).isoformat()
-    fan_cmd_val = "on" if room.fan_on else "off"
-    door_cmd_val = "locked" if room.door_locked else "unlocked"
-
-    # Gửi topic /state
-    await publish_mqtt_message(
-        f"smartcampus/v1/room/{room_id}/state",
-        {
-            "room_id": str(room_id),
-            "room_mode": room.mode.lower(),
-            "room_status": "online",
-        },
-    )
-
-    # Gửi lệnh quạt trực tiếp qua topic /command/room/{room_id} để ESP32 bật/tắt quạt ngay lập tức
-    await publish_mqtt_message(
-        f"smartcampus/v1/command/room/{room_id}",
-        {
-            "message_id": f"sync-fan-{int(datetime.now().timestamp())}",
-            "source_timestamp": now_iso,
-            "payload": {
-                "command_id": f"sync-fan-{room_id}",
-                "command_type": "fan",
-                "command_value": fan_cmd_val,
-                "room_id": str(room_id),
-            },
-        },
-    )
-
-    # 3. Đồng bộ trạng thái sang Edge Gateway & TimescaleDB
-    from app.config.settings import settings
-    import httpx
-    try:
-        base_edge_url = settings.BACKEND_BASE_URL.rstrip("/")
-        edge_exec_url = f"{base_edge_url}/api/commands/room/execute" if not base_edge_url.endswith("/api") else f"{base_edge_url}/commands/room/execute"
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            # Sync mode
-            await client.post(edge_exec_url, json={
-                "room_id": str(room_id),
-                "command_type": "mode",
-                "command_value": room.mode.lower(),
-                "reason": f"Manual mode update by {_admin.username}",
-                "source": "dtwin_admin",
-            })
-            # Sync fan command to Edge
-            await client.post(edge_exec_url, json={
-                "room_id": str(room_id),
-                "command_type": "fan",
-                "command_value": fan_cmd_val,
-                "reason": f"Auto fan sync with mode {room.mode}",
-                "source": "dtwin_admin",
-            })
-    except Exception as exc:
-        logger.warning("Không thể gọi Edge Gateway đồng bộ mode/fan: %s", exc)
 
     logger.info("Room %s state changed: %s → %s (Fan: %s, Door: %s)", room.name, room.previous_mode, room.mode, fan_cmd_val, door_cmd_val)
     return room
@@ -239,48 +234,20 @@ async def toggle_room_fan(
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    room.fan_on = bool(payload.fan_on)
+    target_fan_on = bool(payload.fan_on)
+    fan_val = "on" if target_fan_on else "off"
+    await _dispatch_room_command_via_edge(
+        room_id,
+        "fan",
+        fan_val,
+        f"Manual fan toggle by {_user.username}",
+    )
+
+    room.fan_on = target_fan_on
     await db.commit()
     await db.refresh(room)
 
-    fan_val = "on" if room.fan_on else "off"
-    from app.websocket.mqtt_bridge import publish_mqtt_message
-    from datetime import datetime, timezone
-    now_iso = datetime.now(timezone.utc).isoformat()
-
-    # 1. Publish MQTT command trực tiếp xuống ESP32
-    await publish_mqtt_message(
-        f"smartcampus/v1/command/room/{room_id}",
-        {
-            "message_id": f"fan-{int(datetime.now().timestamp() * 1000)}",
-            "source_timestamp": now_iso,
-            "payload": {
-                "command_id": f"cmd-fan-{room_id}",
-                "command_type": "fan",
-                "command_value": fan_val,
-                "room_id": str(room_id),
-            },
-        },
-    )
-
-    # 2. Đồng bộ Edge Gateway
-    from app.config.settings import settings
-    import httpx
-    try:
-        base_edge_url = settings.BACKEND_BASE_URL.rstrip("/")
-        edge_exec_url = f"{base_edge_url}/api/commands/room/execute" if not base_edge_url.endswith("/api") else f"{base_edge_url}/commands/room/execute"
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            await client.post(edge_exec_url, json={
-                "room_id": str(room_id),
-                "command_type": "fan",
-                "command_value": fan_val,
-                "reason": f"Manual fan toggle by {_user.username}",
-                "source": "dtwin_admin",
-            })
-    except Exception as exc:
-        logger.warning("Không thể gọi Edge Gateway đồng bộ fan: %s", exc)
-
-    # 3. Broadcast WebSocket tới Digital Twin UI
+    # Broadcast WebSocket tới Digital Twin UI
     from app.websocket.manager import ws_manager
     await ws_manager.broadcast({
         "type": "room_telemetry",
@@ -312,48 +279,20 @@ async def toggle_room_door(
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
 
-    room.door_locked = bool(payload.door_locked)
+    target_door_locked = bool(payload.door_locked)
+    door_val = "locked" if target_door_locked else "unlocked"
+    await _dispatch_room_command_via_edge(
+        room_id,
+        "door",
+        door_val,
+        f"Manual door toggle by {_user.username}",
+    )
+
+    room.door_locked = target_door_locked
     await db.commit()
     await db.refresh(room)
 
-    door_val = "locked" if room.door_locked else "unlocked"
-    from app.websocket.mqtt_bridge import publish_mqtt_message
-    from datetime import datetime, timezone
-    now_iso = datetime.now(timezone.utc).isoformat()
-
-    # 1. Publish MQTT command trực tiếp xuống ESP32
-    await publish_mqtt_message(
-        f"smartcampus/v1/command/room/{room_id}",
-        {
-            "message_id": f"door-{int(datetime.now().timestamp() * 1000)}",
-            "source_timestamp": now_iso,
-            "payload": {
-                "command_id": f"cmd-door-{room_id}",
-                "command_type": "door",
-                "command_value": door_val,
-                "room_id": str(room_id),
-            },
-        },
-    )
-
-    # 2. Đồng bộ Edge Gateway
-    from app.config.settings import settings
-    import httpx
-    try:
-        base_edge_url = settings.BACKEND_BASE_URL.rstrip("/")
-        edge_exec_url = f"{base_edge_url}/api/commands/room/execute" if not base_edge_url.endswith("/api") else f"{base_edge_url}/commands/room/execute"
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            await client.post(edge_exec_url, json={
-                "room_id": str(room_id),
-                "command_type": "door",
-                "command_value": door_val,
-                "reason": f"Manual door toggle by {_user.username}",
-                "source": "dtwin_admin",
-            })
-    except Exception as exc:
-        logger.warning("Không thể gọi Edge Gateway đồng bộ door: %s", exc)
-
-    # 3. Broadcast WebSocket tới Digital Twin UI
+    # Broadcast WebSocket tới Digital Twin UI
     from app.websocket.manager import ws_manager
     await ws_manager.broadcast({
         "type": "room_telemetry",

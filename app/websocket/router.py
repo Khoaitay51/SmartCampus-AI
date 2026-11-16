@@ -104,7 +104,8 @@ async def _handle_client_message(
             from uuid import UUID
 
             async with async_session() as db:
-                rec = await db.get(AIRecommendation, UUID(rec_id))
+                rec_stmt = select(AIRecommendation).where(AIRecommendation.id == UUID(rec_id)).with_for_update()
+                rec = (await db.execute(rec_stmt)).scalar_one_or_none()
                 if not rec:
                     await ws_manager.send_personal(websocket, {
                         "type": "error",
@@ -126,6 +127,7 @@ async def _handle_client_message(
                         rec.tool_name,
                         rec.tool_params,
                         client_hash=message.get("payload_hash"),
+                        require_binding=True,
                     )
                     if not ok:
                         logger.warning("WS HITL approve bị chặn cho rec %s: %s", rec_id, why)
@@ -158,6 +160,14 @@ async def _handle_client_message(
                         expected_mode=binding.get("expected_mode"),
                         expected_state_version=binding.get("expected_state_version"),
                     )
+                    exec_status = exec_result.get("edge_status")
+                    if exec_status in ("stale_approval", "blocked_by_edge_interlock"):
+                        rec.status = "stale" if exec_status == "stale_approval" else "blocked"
+                        rec.review_notes = (
+                            (rec.review_notes + " | ") if rec.review_notes else ""
+                        ) + f"Edge: {exec_status}"
+                        await db.commit()
+                        await db.refresh(rec)
                     exec_status = (exec_result or {}).get("edge_status")
                     if exec_status in ("stale_approval", "blocked_by_edge_interlock"):
                         rec.status = "stale" if exec_status == "stale_approval" else "blocked"
