@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="380" viewBox="0 0 720 380" font-family="Times New Roman, serif">
+<rect width="720" height="380" fill="white"/>
+<line x1="70" y1="310.0" x2="700" y2="310.0" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="314.0" text-anchor="end" font-size="13" fill="#222">0</text>
+<line x1="70" y1="258.0" x2="700" y2="258.0" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="262.0" text-anchor="end" font-size="13" fill="#222">10</text>
+<line x1="70" y1="206.0" x2="700" y2="206.0" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="210.0" text-anchor="end" font-size="13" fill="#222">20</text>
+<line x1="70" y1="154.0" x2="700" y2="154.0" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="158.0" text-anchor="end" font-size="13" fill="#222">30</text>
+<line x1="70" y1="101.99999999999999" x2="700" y2="101.99999999999999" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="105.99999999999999" text-anchor="end" font-size="13" fill="#222">40</text>
+<line x1="70" y1="50.0" x2="700" y2="50.0" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="54.0" text-anchor="end" font-size="13" fill="#222">50</text>
+<text x="18" y="180.0" transform="rotate(-90 18 180.0)" text-anchor="middle" font-size="14" fill="#222">SUP (%)</text>
+<rect x="70" y="50" width="630" height="260" fill="none" stroke="#222"/>
+<rect x="86.8" y="64.0" width="35.7" height="246.0" fill="#3FADE4"/>
+<text x="104.7" y="59.0" text-anchor="middle" font-size="12" fill="#3FADE4">47.3</text>
+<rect x="122.5" y="304.3" width="35.7" height="5.7" fill="#F284B5"/>
+<text x="140.3" y="299.3" text-anchor="middle" font-size="12" fill="#F284B5">1.1</text>
+<text x="122.5" y="330" text-anchor="middle" font-size="14" fill="#222">Gemini</text>
+<rect x="191.8" y="156.6" width="35.7" height="153.4" fill="#3FADE4"/>
+<text x="209.7" y="151.6" text-anchor="middle" font-size="12" fill="#3FADE4">29.5</text>
+<rect x="227.5" y="310.0" width="35.7" height="0.0" fill="#F284B5"/>
+<text x="245.3" y="305.0" text-anchor="middle" font-size="12" fill="#F284B5">0.0</text>
+<text x="227.5" y="330" text-anchor="middle" font-size="14" fill="#222">GPT-5.6</text>
+<rect x="296.8" y="215.4" width="35.7" height="94.6" fill="#3FADE4"/>
+<text x="314.7" y="210.4" text-anchor="middle" font-size="12" fill="#3FADE4">18.2</text>
+<rect x="332.5" y="310.0" width="35.7" height="0.0" fill="#F284B5"/>
+<text x="350.4" y="305.0" text-anchor="middle" font-size="12" fill="#F284B5">0.0</text>
+<text x="332.5" y="330" text-anchor="middle" font-size="14" fill="#222">GPT-6</text>
+<rect x="401.8" y="150.4" width="35.7" height="159.6" fill="#3FADE4"/>
+<text x="419.7" y="145.4" text-anchor="middle" font-size="12" fill="#3FADE4">30.7</text>
+<rect x="437.5" y="310.0" width="35.7" height="0.0" fill="#F284B5"/>
+<text x="455.4" y="305.0" text-anchor="middle" font-size="12" fill="#F284B5">0.0</text>
+<text x="437.5" y="330" text-anchor="middle" font-size="14" fill="#222">Haiku</text>
+<rect x="506.8" y="274.6" width="35.7" height="35.4" fill="#3FADE4"/>
+<text x="524.6" y="269.6" text-anchor="middle" font-size="12" fill="#3FADE4">6.8</text>
+<rect x="542.5" y="310.0" width="35.7" height="0.0" fill="#F284B5"/>
+<text x="560.4" y="305.0" text-anchor="middle" font-size="12" fill="#F284B5">0.0</text>
+<text x="542.5" y="330" text-anchor="middle" font-size="14" fill="#222">DeepSeek</text>
+<rect x="611.8" y="268.4" width="35.7" height="41.6" fill="#3FADE4"/>
+<text x="629.6" y="263.4" text-anchor="middle" font-size="12" fill="#3FADE4">8.0</text>
+<rect x="647.5" y="310.0" width="35.7" height="0.0" fill="#F284B5"/>
+<text x="665.4" y="305.0" text-anchor="middle" font-size="12" fill="#F284B5">0.0</text>
+<text x="647.5" y="330" text-anchor="middle" font-size="14" fill="#222">GLM</text>
+<rect x="275.0" y="350" width="14" height="14" fill="#3FADE4"/>
+<text x="295.0" y="362" font-size="14" fill="#222">Baseline</text>
+<rect x="405.0" y="350" width="14" height="14" fill="#F284B5"/>
+<text x="425.0" y="362" font-size="14" fill="#222">+ Guardrail</text>
+</svg>

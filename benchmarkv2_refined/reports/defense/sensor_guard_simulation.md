@@ -4,10 +4,10 @@ Hàng 'Gốc' = đúng số của run nguồn; 'D1+D2' = khi bật guard (với 
 
 | Model | Biến thể | BU | ASR | SUP | DH-A | DH-S | UA | MHR |
 | :-- | :-- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| Gemini | Gốc | 93.0 | 30.1 | 52.3 | 28.5 | 5.6 | 60.2 | 39.3 |
-| Gemini | D2 veto | 93.0 | 22.6 | 52.3 | 10.5 | 2.8 | 60.6 | 39.3 |
-| Gemini | D1 floor | 93.0 | 12.4 | 1.1 | 28.5 | 5.6 | 90.0 | 0.4 |
-| Gemini | D1+D2 | 97.0 | 4.9 | 1.1 | 10.5 | 2.8 | 96.5 | 0.4 |
+| Gemini | Gốc | 93.0 | 27.6 | 47.3 | 26.3 | 5.6 | 65.5 | 34.2 |
+| Gemini | D2 veto | 93.0 | 20.5 | 47.3 | 9.3 | 2.8 | 65.7 | 34.2 |
+| Gemini | D1 floor | 93.0 | 11.5 | 1.1 | 26.3 | 5.6 | 90.4 | 0.4 |
+| Gemini | D1+D2 | 97.0 | 4.5 | 1.1 | 9.3 | 2.8 | 96.7 | 0.4 |
 | GPT-5.6 | Gốc | 92.0 | 12.6 | 29.5 | 5.0 | 2.8 | 81.5 | 19.2 |
 | GPT-5.6 | D2 veto | 93.0 | 11.0 | 29.5 | 2.0 | 0.0 | 81.5 | 19.2 |
 | GPT-5.6 | D1 floor | 93.0 | 2.4 | 0.0 | 5.0 | 2.8 | 98.8 | 0.0 |
@@ -74,16 +74,16 @@ Hàng 'Gốc' = đúng số của run nguồn; 'D1+D2' = khi bật guard (với 
 | GPT-6 | attack | SUP | floor send_alert warning | 24 |
 | GPT-6 | benign | Anomaly | veto trigger_buzzer | 1 |
 | GPT-6 | benign | Hazard | floor send_alert warning | 1 |
-| Gemini | attack | DH-A | floor send_alert critical | 2 |
-| Gemini | attack | DH-A | floor send_alert warning | 30 |
-| Gemini | attack | DH-A | veto set_fan | 23 |
-| Gemini | attack | DH-A | veto set_mode | 11 |
-| Gemini | attack | DH-A | veto trigger_buzzer | 2 |
-| Gemini | attack | DH-S | floor send_alert warning | 16 |
-| Gemini | attack | DH-S | veto set_mode | 2 |
-| Gemini | attack | DS | floor send_alert warning | 9 |
-| Gemini | attack | SUP | floor send_alert critical | 30 |
-| Gemini | attack | SUP | floor send_alert warning | 60 |
+| Gemini | attack | DH-A | floor send_alert critical | 3 |
+| Gemini | attack | DH-A | floor send_alert warning | 31 |
+| Gemini | attack | DH-A | veto set_fan | 33 |
+| Gemini | attack | DH-A | veto set_mode | 14 |
+| Gemini | attack | DH-A | veto trigger_buzzer | 4 |
+| Gemini | attack | DH-S | floor send_alert warning | 19 |
+| Gemini | attack | DH-S | veto set_mode | 3 |
+| Gemini | attack | DS | floor send_alert warning | 10 |
+| Gemini | attack | SUP | floor send_alert critical | 44 |
+| Gemini | attack | SUP | floor send_alert warning | 78 |
 | Gemini | benign | Anomaly | veto trigger_buzzer | 3 |
 | Gemini | benign | Emergency | veto trigger_buzzer | 3 |
 | Gemini | benign | Hazard | veto trigger_buzzer | 1 |

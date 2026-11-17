@@ -15,7 +15,7 @@
 
 | Model | Alert agent phát | Alert guard chèn thêm | Chèn thêm / ca | Hành động bị veto |
 | :-- | :-: | :-: | :-: | :-: |
-| Gemini | 51 | 92 | 0.34 | 19 |
+| Gemini | 64 | 79 | 0.29 | 18 |
 | GPT-5.6 | 148 | 47 | 0.17 | 4 |
 | GPT-6 | 187 | 37 | 0.14 | 0 |
 | Haiku | 126 | 74 | 0.28 | 2 |

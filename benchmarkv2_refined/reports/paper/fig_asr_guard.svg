@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="380" viewBox="0 0 720 380" font-family="Times New Roman, serif">
+<rect width="720" height="380" fill="white"/>
+<line x1="70" y1="310.0" x2="700" y2="310.0" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="314.0" text-anchor="end" font-size="13" fill="#222">0</text>
+<line x1="70" y1="235.71428571428572" x2="700" y2="235.71428571428572" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="239.71428571428572" text-anchor="end" font-size="13" fill="#222">10</text>
+<line x1="70" y1="161.42857142857144" x2="700" y2="161.42857142857144" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="165.42857142857144" text-anchor="end" font-size="13" fill="#222">20</text>
+<line x1="70" y1="87.14285714285715" x2="700" y2="87.14285714285715" stroke="#bbb" stroke-dasharray="4 3"/>
+<text x="62" y="91.14285714285715" text-anchor="end" font-size="13" fill="#222">30</text>
+<text x="18" y="180.0" transform="rotate(-90 18 180.0)" text-anchor="middle" font-size="14" fill="#222">ASR (%)</text>
+<rect x="70" y="50" width="630" height="260" fill="none" stroke="#222"/>
+<rect x="86.8" y="105.0" width="35.7" height="205.0" fill="#3FADE4"/>
+<text x="104.7" y="100.0" text-anchor="middle" font-size="12" fill="#3FADE4">27.6</text>
+<rect x="122.5" y="276.6" width="35.7" height="33.4" fill="#F284B5"/>
+<text x="140.3" y="271.6" text-anchor="middle" font-size="12" fill="#F284B5">4.5</text>
+<text x="122.5" y="330" text-anchor="middle" font-size="14" fill="#222">Gemini</text>
+<rect x="191.8" y="216.4" width="35.7" height="93.6" fill="#3FADE4"/>
+<text x="209.7" y="211.4" text-anchor="middle" font-size="12" fill="#3FADE4">12.6</text>
+<rect x="227.5" y="304.1" width="35.7" height="5.9" fill="#F284B5"/>
+<text x="245.3" y="299.1" text-anchor="middle" font-size="12" fill="#F284B5">0.8</text>
+<text x="227.5" y="330" text-anchor="middle" font-size="14" fill="#222">GPT-5.6</text>
+<rect x="296.8" y="258.7" width="35.7" height="51.3" fill="#3FADE4"/>
+<text x="314.7" y="253.7" text-anchor="middle" font-size="12" fill="#3FADE4">6.9</text>
+<rect x="332.5" y="307.0" width="35.7" height="3.0" fill="#F284B5"/>
+<text x="350.4" y="302.0" text-anchor="middle" font-size="12" fill="#F284B5">0.4</text>
+<text x="332.5" y="330" text-anchor="middle" font-size="14" fill="#222">GPT-6</text>
+<rect x="401.8" y="222.3" width="35.7" height="87.7" fill="#3FADE4"/>
+<text x="419.7" y="217.3" text-anchor="middle" font-size="12" fill="#3FADE4">11.8</text>
+<rect x="437.5" y="307.0" width="35.7" height="3.0" fill="#F284B5"/>
+<text x="455.4" y="302.0" text-anchor="middle" font-size="12" fill="#F284B5">0.4</text>
+<text x="437.5" y="330" text-anchor="middle" font-size="14" fill="#222">Haiku</text>
+<rect x="506.8" y="289.2" width="35.7" height="20.8" fill="#3FADE4"/>
+<text x="524.6" y="284.2" text-anchor="middle" font-size="12" fill="#3FADE4">2.8</text>
+<rect x="542.5" y="307.0" width="35.7" height="3.0" fill="#F284B5"/>
+<text x="560.4" y="302.0" text-anchor="middle" font-size="12" fill="#F284B5">0.4</text>
+<text x="542.5" y="330" text-anchor="middle" font-size="14" fill="#222">DeepSeek</text>
+<rect x="611.8" y="278.1" width="35.7" height="31.9" fill="#3FADE4"/>
+<text x="629.6" y="273.1" text-anchor="middle" font-size="12" fill="#3FADE4">4.3</text>
+<rect x="647.5" y="304.1" width="35.7" height="5.9" fill="#F284B5"/>
+<text x="665.4" y="299.1" text-anchor="middle" font-size="12" fill="#F284B5">0.8</text>
+<text x="647.5" y="330" text-anchor="middle" font-size="14" fill="#222">GLM</text>
+<rect x="275.0" y="350" width="14" height="14" fill="#3FADE4"/>
+<text x="295.0" y="362" font-size="14" fill="#222">Baseline</text>
+<rect x="405.0" y="350" width="14" height="14" fill="#F284B5"/>
+<text x="425.0" y="362" font-size="14" fill="#222">+ Guardrail</text>
+</svg>

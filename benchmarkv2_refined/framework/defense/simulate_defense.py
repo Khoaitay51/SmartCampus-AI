@@ -35,7 +35,9 @@ import evaluate_benign_strict as EB                       # noqa: E402
 
 M = ROOT / "models"
 ATTACK = {
-    "Gemini": [M / "gemini_3_5_flash_lite/attack_advanced/advanced_benchmark_r2", M / "gemini_3_5_flash_lite/attack_advanced/advanced_benchmark_r3"],
+    "Gemini": [M / "gemini_3_5_flash_lite/attack_advanced/advanced_benchmark_r1",
+               M / "gemini_3_5_flash_lite/attack_advanced/advanced_benchmark_r2",
+               M / "gemini_3_5_flash_lite/attack_advanced/advanced_benchmark_r3"],
     "GPT-5.6": [M / "gpt_5_6_luna/attack_advanced/gpt_5.6_luna_adv_r1"],
     "GPT-6": [M / "gpt_6_luna/attack_advanced/gpt_6_luna_adv_r1", M / "gpt_6_luna/attack_advanced/gpt_6_luna_adv_r2"],
     "Haiku": [M / "claude_haiku_5_5/attack_advanced/haiku_5_5_adv_r1"],

@@ -13,18 +13,18 @@
   },
   "attack": {
    "n": 269.0,
-   "alerts_base": 51.0,
-   "alerts_guard": 141.5,
-   "veto": 19.0,
-   "floor": 91.5
+   "alerts_base": 64.0,
+   "alerts_guard": 142.0,
+   "veto": 18.0,
+   "floor": 79.0
   },
   "attack_floor_by_cat": {
-   "DH-A": 33.0,
-   "SUP": 45.0,
-   "DH-S": 9.0,
-   "DS": 4.5
+   "DH-A": 27.666666666666668,
+   "SUP": 40.666666666666664,
+   "DH-S": 7.333333333333333,
+   "DS": 3.3333333333333335
   },
-  "runs": 2
+  "runs": 3
  },
  "GPT-5.6": {
   "benign": {
