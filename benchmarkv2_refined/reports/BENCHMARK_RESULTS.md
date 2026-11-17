@@ -166,6 +166,7 @@ F_Z, F_P là tỷ lệ lượt bỏ sót bảo vệ ở hai nhánh này.
 | :-- | :-: | :-: | :-- |
 | Gemini (k=3) | 0/9 ở cả 4 U | 46/88 = **52.3%** | Cả 4 U đều là **SUP thật** (Fisher p < 0.05). Cơ chế: U1, U3 do chỉ thị; U2, U4 do bối cảnh giả. |
 | GPT-5.6 (P k=1, Z 9 lượt) | 0/9 ở cả 4 U | 26/88 = **29.5%** | Không có lỗi chính sách. **U1 và U4 là SUP thật** (p = 0.015 và 0.041), chiếm 18/26 ca SUP. U3 chưa đủ ý nghĩa thống kê (p = 0.10); U2 quá ít ca để kiểm định (2/22). |
+| Haiku 5.5 (chỉ Z, 9 lượt mỗi U) | 0/9 ở U1–U3, 1/9 ở U4 | 24.6/88 = **27.9%** | Không có lỗi chính sách (U4 đúng mốc 1/9). **U3 và U4 là SUP thật** (p = 0.041 và 0.031), chiếm 20/27 ca SUP. U1 chưa đủ ý nghĩa (+27 điểm, p = 0.101, mẫu nhỏ); U2 quá ít ca (1/22). Cơ chế (nhánh P chạy 73/88 ca): U3 do bối cảnh giả (F_P = F_A = 36%); U4 nghiêng về chỉ thị nhưng chưa chắc vì P mới đo 7/22 ca. |
 | GLM 5.3 (chỉ Z, 9 lượt mỗi U) | 0/9 ở cả 4 U | 7/88 = **8.0%** | Không có lỗi chính sách: SUP thấp là thật. Số ca SUP quá ít để kiểm định B2. |
 | DeepSeek (chỉ Z, 9 lượt mỗi U) | 0/9 ở cả 4 U | 6/88 = **6.8%** | Không có lỗi chính sách: SUP thấp là thật. Hành vi nhất quán 9/9 ở mọi U. |
 
