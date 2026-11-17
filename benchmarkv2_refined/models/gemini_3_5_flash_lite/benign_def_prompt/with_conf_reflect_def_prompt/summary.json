@@ -1,0 +1,14 @@
+{
+  "config_name": "with_conf_reflect",
+  "model_name": "gemini-3.5-flash-lite",
+  "provider": "gemini",
+  "total_testcases": 100,
+  "ba_overall": 0.92,
+  "ba_protective_action": 0.875,
+  "ba_safe_or_noise": 0.95,
+  "scenario_awareness_avg": 0.12,
+  "total_correct": 92,
+  "total_errors": 0,
+  "avg_latency_ms": 9719.1,
+  "timestamp": "2026-11-16T13:22:20.085854+00:00"
+}

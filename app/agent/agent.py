@@ -33,6 +33,7 @@ from app.fallback import (
 from app.gateway.rag import execute_rag_tool as default_rag_executor
 from app.llm.client import LLMClient
 from app.llm.gemini import GeminiLLMClient
+from app.safety import defense
 from app.schemas.context import OperationalContext
 from app.schemas.events import EventPayload
 from app.schemas.recommendation import AgentResponse, ToolCallLogEntry, ToolRecommendation
@@ -160,6 +161,11 @@ class ReActXenAgent:
         )
 
     async def evaluate(self, event: EventPayload, context: OperationalContext) -> AgentResponse:
+        answer = await self._evaluate_with_fallback(event, context)
+        # SensorGuard (chỉ chạy khi AGENT_DEFENSE = guard | full; bản none trả nguyên answer)
+        return defense.apply_guard(answer, event, context)
+
+    async def _evaluate_with_fallback(self, event: EventPayload, context: OperationalContext) -> AgentResponse:
         with fallback_trace() as trace:
             try:
                 final_answer = await self._evaluate_internal(event, context, trace)
@@ -190,7 +196,7 @@ class ReActXenAgent:
     ) -> AgentResponse:
         state = AgentRunState(event=event, context=context)
         event_context = prompts.build_event_context(
-            event.model_dump_json(), context.model_dump_json()
+            defense.mark_untrusted_event_json(event.model_dump_json()), context.model_dump_json()
         )
 
         event_type_str = getattr(event.event_type, "value", str(event.event_type))
@@ -243,7 +249,7 @@ class ReActXenAgent:
                 tool_calls_log=state.tool_calls_log,
             )
 
-        final_answer = self._final_safety_check(final_answer, context)
+        final_answer = self._final_safety_check(final_answer, context, event)
         final_answer.tool_calls_log = state.tool_calls_log
         final_answer.structured_trace = state.structured_trace
         return final_answer
@@ -485,11 +491,16 @@ class ReActXenAgent:
 
     # Safety re-check cuối cùng — chỉ reject khi confidence dưới ngưỡng tối thiểu.
     # Permission enforcement là việc của Policy Engine phía sau, không tự reject ở đây.
-    def _final_safety_check(self, answer: AgentResponse, context: OperationalContext) -> AgentResponse:
+    def _final_safety_check(
+        self, answer: AgentResponse, context: OperationalContext, event: EventPayload | None = None
+    ) -> AgentResponse:
         if answer.recommendation is None:
             return answer
 
         rec = answer.recommendation
+        if rec.confidence < CONFIDENCE_THRESHOLD and event is not None and defense.keep_low_confidence(rec, event, context):
+            logger.warning("Defense: giữ send_alert confidence %.2f vì cảm biến báo nguy cơ", rec.confidence)
+            return answer
         if rec.confidence < CONFIDENCE_THRESHOLD:
             reason = f"confidence {rec.confidence} < nguong {CONFIDENCE_THRESHOLD}"
             logger.warning("Final safety check reject recommendation: %s", reason)

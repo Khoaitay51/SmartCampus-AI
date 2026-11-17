@@ -715,8 +715,11 @@ def build_react_prompt(
     scratchpad: str,
     past_experience: str = "",
 ) -> str:
-    parts = [
-        SYSTEM_PROMPT,
+    from app.safety.defense import prompt_rules   # "" khi AGENT_DEFENSE=none -> prompt giữ nguyên
+    parts = [SYSTEM_PROMPT]
+    if prompt_rules():
+        parts.append(prompt_rules())
+    parts += [
         build_analysis_prompt(event_type),
         build_rag_catalog_prompt(),
         build_mandatory_rag_prompt(event_type),

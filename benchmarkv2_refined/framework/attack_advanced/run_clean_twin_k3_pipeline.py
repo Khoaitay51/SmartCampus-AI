@@ -48,6 +48,7 @@ def run_round(
     limit: int | None,
     use_mock_rag: bool,
     dataset: str = DATASET,
+    defense: str = "none",
 ) -> bool:
     print(f"\n{'='*70}\n>>> START CLEAN TWIN SUP ROUND: {run_id} (provider={provider}, model={model})\n{'='*70}", flush=True)
     cmd = [
@@ -58,6 +59,7 @@ def run_round(
         "--model", model,
         "--timeout", str(timeout),
         "--suite", "clean_twin_sup",
+        "--defense", defense,
     ]
     if limit is not None:
         cmd.extend(["--limit", str(limit)])
@@ -111,24 +113,28 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--use-mock-rag", action="store_true", default=False)
     parser.add_argument("--synthesize-only", action="store_true", default=False)
+    parser.add_argument("--defense", default="none", choices=["none", "prompt", "guard", "full"],
+                        help="Phòng thủ Sensor-Grounded Response. Nhánh twin và nhánh A đều lấy từ thư mục _def_<mode>")
 
     args = parser.parse_args()
+    sfx = "" if args.defense == "none" else f"_def_{args.defense}"
     tag = args.tag or (_slugify(args.model) if args.provider in ("ollama", "deepseek") else None)
 
     mdir = MODELS_DIR / _slugify(args.model)
-    twin_root = mdir / "clean_twin_sup"
+    twin_root = mdir / f"clean_twin_sup{sfx}"
     if tag:
-        rounds = [f"{tag}_clean_twin_sup_r1", f"{tag}_clean_twin_sup_r2", f"{tag}_clean_twin_sup_r3"]
+        rounds = [f"{tag}_clean_twin_sup_r{i}{sfx}" for i in (1, 2, 3)]
         atk_prefix = f"{tag}_adv_r"
-        default_out = MODELS_DIR.parent / "reports" / "scored" / "clean_twin_sup" / _slugify(args.model)
+        default_out = MODELS_DIR.parent / "reports" / "scored" / "clean_twin_sup" / (_slugify(args.model) + sfx)
     else:
-        rounds = ["clean_twin_sup_r1", "clean_twin_sup_r2", "clean_twin_sup_r3"]
+        rounds = [f"clean_twin_sup_r{i}{sfx}" for i in (1, 2, 3)]
         atk_prefix = "advanced_benchmark_r"
-        default_out = MODELS_DIR.parent / "reports" / "scored" / "clean_twin_sup" / _slugify(args.model)
+        default_out = MODELS_DIR.parent / "reports" / "scored" / "clean_twin_sup" / (_slugify(args.model) + sfx)
     # Nhánh A: mọi run attack hoàn chỉnh <prefix><số> (bỏ pilot, *_incomplete)
     default_attack = sorted(
-        p / "raw_runs.jsonl" for p in (mdir / "attack_advanced").glob(f"{atk_prefix}*")
-        if p.name[len(atk_prefix):].isdigit() and (p / "raw_runs.jsonl").exists()
+        p / "raw_runs.jsonl" for p in (mdir / f"attack_advanced{sfx}").glob(f"{atk_prefix}*")
+        if p.name[len(atk_prefix):len(p.name) - len(sfx)].isdigit() and p.name.endswith(sfx)
+        and (p / "raw_runs.jsonl").exists()
     )
 
     # Cờ STOP_AFTER_R2.flag làm runner thoát (mã 0) ở mọi run có "r3" -> round 3 bị bỏ qua mà không báo lỗi
@@ -144,7 +150,7 @@ def main():
 
     attack_runs = args.attack_runs or default_attack
     if not attack_runs:
-        print(f"[STOP] Không tìm thấy run attack {atk_prefix}N trong {mdir / 'attack_advanced'}. Kiểm tra --tag hoặc truyền --attack-runs.", flush=True)
+        print(f"[STOP] Không tìm thấy run attack {atk_prefix}N trong {mdir / ('attack_advanced' + sfx)}. Kiểm tra --tag hoặc truyền --attack-runs.", flush=True)
         sys.exit(1)
     print(f"Nhánh A dùng: {[str(p) for p in attack_runs]}", flush=True)
     out_dir = args.out or default_out
@@ -160,13 +166,14 @@ def main():
                 limit=args.limit,
                 use_mock_rag=args.use_mock_rag,
                 dataset=args.dataset,
+                defense=args.defense,
             )
             if not ok:
                 print(f"[!] Pipeline halted due to error in {rid}.", flush=True)
                 sys.exit(1)
 
     synthesize(rounds=rounds, attack_runs=attack_runs, out_dir=out_dir, twin_root=twin_root,
-               label=_slugify(args.model))
+               label=_slugify(args.model) + sfx)
     print("\n[✓] ALL K=3 CLEAN TWIN SUP RUNS AND SYNTHESIS COMPLETED!", flush=True)
 
 

@@ -61,6 +61,12 @@ Lệnh chạy và tag của từng model: `reports/CLEAN_TWIN_PLAN.md` mục 4.3
 
 **Lưu ý:** file `framework/attack_advanced/STOP_AFTER_R2.flag` đang tồn tại, nên mọi run có `r3` trong tên sẽ bị dừng. Xoá file này nếu muốn chạy đủ k=3; pipeline clean-twin sẽ từ chối chạy nếu cờ này còn.
 
+## Chạy có hoặc không có phòng thủ
+
+Mọi runner và pipeline nhận cờ `--defense none|prompt|guard|full`. Mặc định là `none`, tức agent gốc, không đổi gì.
+- Bật defense thì kết quả ghi vào `models/<model>/<suite>_def_<mode>/<run_id>_def_<mode>`, không ghi đè bản gốc.
+- Phương pháp và cách thử nghiệm: `reports/DEFENSE_PROPOSAL.md`.
+
 ## Chấm điểm theo ground truth chuẩn (từ thư mục `benchmarkv2_refined/`)
 
 Chấm hoàn toàn từ `raw_runs.jsonl`, không cần chạy lại agent.

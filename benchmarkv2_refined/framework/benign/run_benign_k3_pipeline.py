@@ -59,6 +59,7 @@ def run_round(
     dataset: Path,
     limit: int | None,
     mock_rag: bool,
+    defense: str = "none",
 ) -> bool:
     print(f"\n{'='*70}\n>>> START BENIGN ROUND: {out_dir.name} (provider={provider}, model={model})\n{'='*70}", flush=True)
     cmd = [
@@ -69,6 +70,7 @@ def run_round(
         "--provider", provider,
         "--model", model,
         "--timeout", str(timeout),
+        "--defense", defense,
     ]
     if limit is not None:
         cmd.extend(["--limit", str(limit)])
@@ -200,12 +202,15 @@ def main():
     parser.add_argument("--mock-rag", action="store_true", default=False)
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--synthesize-only", action="store_true", default=False)
+    parser.add_argument("--defense", default="none", choices=["none", "prompt", "guard", "full"],
+                        help="Phòng thủ Sensor-Grounded Response. Kết quả ghi vào benign_def_<mode>/, không đụng bản gốc")
 
     args = parser.parse_args()
     global RESULTS_ROOT
-    RESULTS_ROOT = MODELS_DIR / _slugify(args.model) / "benign"
+    sfx = "" if args.defense == "none" else f"_def_{args.defense}"
+    RESULTS_ROOT = MODELS_DIR / _slugify(args.model) / f"benign{sfx}"
     tag = args.tag or _slugify(args.model)
-    round_dirs = [RESULTS_ROOT / f"{tag}_{args.config}_r{i}" for i in range(1, args.k + 1)]
+    round_dirs = [RESULTS_ROOT / f"{tag}_{args.config}_r{i}{sfx}" for i in range(1, args.k + 1)]
 
     if not args.synthesize_only:
         for d in round_dirs:
@@ -218,11 +223,12 @@ def main():
                 dataset=args.dataset,
                 limit=args.limit,
                 mock_rag=args.mock_rag,
+                defense=args.defense,
             )
             if not ok:
                 sys.exit(1)
 
-    synthesize_k3(round_dirs, tag=tag, config=args.config, model=args.model, provider=args.provider)
+    synthesize_k3(round_dirs, tag=tag + sfx, config=args.config, model=args.model, provider=args.provider)
 
 
 if __name__ == "__main__":

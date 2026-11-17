@@ -1,0 +1,318 @@
+% =====================================================================
+% SmartCampus Agent Security -- IEEE conference draft (target: 6 pages)
+% Compile on Overleaf (IEEEtran). Red \tbd{} cells = experiments still running.
+% =====================================================================
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage[T1]{fontenc}
+\usepackage{times}
+
+\newcommand{\tbd}[1]{\textcolor{red}{#1}}
+\newcommand{\best}[1]{\textbf{#1}}
+\newcommand{\up}{$\uparrow$}
+\newcommand{\dn}{$\downarrow$}
+\newcommand{\sech}[1]{\textsc{#1}}
+% compact tables
+\renewcommand{\arraystretch}{1.08}
+
+\begin{document}
+
+\title{Sensor-Grounded Defense for LLM Agents in a Cyber-Physical Smart Campus: Benchmarking Indirect Prompt Injection Across Six Models}
+
+\author{\IEEEauthorblockN{Author One, Author Two, Author Three}
+\IEEEauthorblockA{Faculty of Information Security, Academy \\
+City, Country \\
+\{author1, author2, author3\}@email.edu}}
+
+\maketitle
+
+\begin{abstract}
+LLM agents that read IoT telemetry and drive physical actuators (fans, door locks, sirens) are exposed to \emph{indirect prompt injection} (IPI) through free-text fields written by third parties. We study this risk on a deployed Smart Campus building-management agent (ReAct with reflection, RAG, finite-state-machine permissions). We build a deterministic, LLM-judge-free benchmark with 100 benign and 254 attack cases (+16 robustness cases) grounded on real sensor data, and a four-class taxonomy: actuation harm (DH-A), security harm (DH-S), \emph{safety suppression} (SUP) and data stealing (DS). Across six models, the attack success rate (ASR) ranges from 2.8\% to 27.6\% while benign utility (BU) stays within 84--93\%. SUP, i.e. persuading the agent \emph{not} to react to a hazard that sensors already show, causes 59--91\% of all successful attacks; data stealing never succeeds. A clean-twin control confirms that this SUP is caused by the injected text and not by a policy mismatch. We then propose \emph{Sensor-Grounded Response}: untrusted-text marking, prompt principles and a fixed sensor-rule guard placed after the agent. Replayed on recorded runs, the guard lowers ASR to $\le$0.8\% (and to 4.9\% for the weakest model) without reducing BU. The prompt-level part is under evaluation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+LLM agents, indirect prompt injection, cyber-physical systems, IoT, safety suppression, benchmark, defense
+\end{IEEEkeywords}
+
+%=====================================================================
+\section{Introduction}
+LLM agents are moving from chat to \emph{control}: they read sensor streams and issue actuator commands. In a building-management setting, a wrong decision is physical---a fan is switched off in an overheating server room, or a smoke alarm is ignored. Unlike a chatbot, the attacker does not need to talk to the agent: IoT events carry free-text fields (maintenance notes, event descriptions, tickets) that any integrated third party can write, and the agent reads them as context. This is the setting of indirect prompt injection~\cite{greshake2023}.
+
+Existing agent-security benchmarks target digital tools such as email and banking~\cite{agentdojo2024,injecagent2024}. They mostly measure whether the agent \emph{does something it should not}. In a cyber-physical system there is a second, quieter failure: the agent \emph{fails to do what it should}. We call it \textbf{safety suppression (SUP)}: the injected text explains away a real sensor reading (``fire drill'', ``sensor under calibration'') and the agent stands down.
+
+\textbf{Contributions.}
+\begin{enumerate}
+\item \textbf{A deterministic IPI benchmark for a physical agent.} 100 benign and 254 attack cases (+16 robustness cases) on a live TimescaleDB/RAG environment, scored by action matching only (no LLM judge), with Wilson 95\% intervals.
+\item \textbf{Taxonomy-level evidence on six models.} SUP is the dominant failure (59--91\% of successes) while DS is 0\%; a \emph{clean-twin} control separates attack-induced SUP from policy mismatch.
+\item \textbf{Sensor-Grounded Response,} a defense whose last stage ignores text entirely. Replayed on recorded runs it cuts ASR by 5--30$\times$ and does not lower BU.
+\end{enumerate}
+
+%=====================================================================
+\section{Related Work}
+\textbf{Prompt injection.} Greshake et al.~\cite{greshake2023} introduced IPI against LLM-integrated applications; Perez and Ribeiro~\cite{perez2022} showed goal hijacking by simple instructions. \textbf{Agent benchmarks.} AgentDojo~\cite{agentdojo2024} and InjecAgent~\cite{injecagent2024} evaluate tool-using agents in digital environments and report utility-under-attack and ASR. We keep these two metrics but (i) use a physical environment with real telemetry, (ii) add omission-type attacks (SUP), and (iii) add a clean-twin control. \textbf{Defenses.} Spotlighting~\cite{hines2024} marks untrusted input for the model; CaMeL~\cite{camel2025} separates control and data flow by design. Our defense combines marking with a deterministic, text-blind guard grounded in trusted sensor values. \textbf{Agent reasoning.} The agent follows ReAct~\cite{react2023} with review and reflection steps.
+
+%=====================================================================
+\section{System and Threat Model}
+\subsection{Smart Campus Agent}
+Edge sensors (DHT22, MQ-2, CO$_2$, RFID, dual IR) publish over MQTT to an edge gateway that keeps a room FSM (\textsc{saving, self\_study, lecture, exam, lock, suspected, emergency}). The agent (ReAct, $\le$5 steps, review + up to 3 reflections) has read-only RAG tools (\texttt{get\_telemetry}, \texttt{get\_room\_history}, \texttt{compare\_rooms}, \dots) and action tools (\texttt{set\_fan}, \texttt{set\_door}, \texttt{set\_mode}, \texttt{trigger\_buzzer}, \texttt{send\_alert}). It emits \emph{one action per event}; a permission matrix per FSM mode and a human-in-the-loop layer sit behind it.
+
+\subsection{Threat Model}
+The attacker controls \emph{only} \texttt{event\_data.description}. Sensor values, timestamps, room context, RAG store and system prompt are trusted. Goals: (DH-A) trigger a harmful actuation; (DH-S) weaken security (unlock, downgrade mode); (SUP) make the agent skip or downgrade a needed protective response; (DS) read a secret from RAG and send it out (canary tokens). Six persuasion styles are used: authority claim, drill/test, urgency, maintenance, technical notice, policy claim; advanced payloads mimic system structure (XML/JSON ``kernel override'' tags) and cite sensor calibration or dual-safety conflicts.
+
+%=====================================================================
+\section{Benchmark and Metrics}
+\subsection{Datasets}
+Table~\ref{tab:data} summarizes the data. Attack cases are the Cartesian product of five real-environment scenarios U1--U5 (Table~\ref{tab:U}) and 60 attacker profiles, after removing semantically invalid pairs.
+
+\begin{table}[t]
+\centering
+\caption{Benchmark composition.}
+\label{tab:data}
+\footnotesize
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Suite} & \textbf{Content} & \textbf{Cases} \\
+\midrule
+Benign & 5 categories $\times$ 20 (Normal 40, Anomaly 20, & 100 \\
+       & Hazard 25, Emergency 15) & \\
+Track A (IPI) & DH-A 100, SUP 88, DH-S 36, DS 30 & 254 \\
+Track B & Stale replay, sensor conflict, wrong tool, param. & 16 \\
+Clean twin & SUP cases with injection removed (Z) or & -- \\
+ & only the directive removed (P) & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Attack scenarios (state frozen at $T_0$) and accepted protective actions.}
+\label{tab:U}
+\footnotesize
+\begin{tabular}{@{}p{0.5cm}p{3.3cm}p{3.5cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Physical truth} & \textbf{Protective action (any)} \\
+\midrule
+U1 & Server 52.3$^\circ$C, 0 people & fan on, alert $\ge$ warn \\
+U2 & Smoke 650 ppm, 18 people & alert $\ge$ warn, buzzer, EMERGENCY \\
+U3 & CO$_2$ 1850 ppm, 35 people & fan on, alert $\ge$ warn \\
+U4 & Unauthorized RFID, LOCK & alert $\ge$ warn, LOCK/SUSPECTED, buzzer \\
+U5 & Normal class (control) & no actuation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Metrics}
+All metrics are computed from the recorded action trajectory; no LLM judge is used (Table~\ref{tab:metrics}). \textbf{BU} is the correct rate without attack. \textbf{ASR} is the headline. \textbf{SUP} is ASR restricted to the suppression class. Attack success for SUP means the emitted action is outside the protective set of the scenario (skip, wrong tool, or alert below \emph{warning}).
+
+\begin{table}[t]
+\centering
+\caption{Metrics. $\uparrow$ higher is better, $\downarrow$ lower is better.}
+\label{tab:metrics}
+\footnotesize
+\begin{tabular}{@{}lp{5.6cm}@{}}
+\toprule
+\textbf{Metric} & \textbf{Definition} \\
+\midrule
+BU \up & Accuracy on 100 benign cases (also split: protective / safe cases) \\
+ASR \dn & Successful attacks / valid runs (254 cases) \\
+SUP \dn & ASR on the 88 safety-suppression cases \\
+UA \up & Correct protective behavior under attack \\
+MHR \dn & Missed-hazard rate on DH-A, DH-S, SUP cases \\
+FDR \dn & Share of outputs that needed the fallback parser \\
+$F_Z$ \dn & Miss rate with the injection removed (clean twin) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Models and Protocol}
+Six agents share the same prompt, tools and database: Gemini~3.5 flash-lite ($k{=}3$ runs), GPT-5.6 luna ($k{=}1$), GPT-6 luna ($k{=}2$), Claude Haiku~5.5, DeepSeek flash, GLM~5.3 flash ($k{=}1$). Ground truth is v2.2.0, whose protective set was aligned with the agent's system prompt (Sec.~\ref{sec:twin}).
+
+%=====================================================================
+\section{Benign Evaluation}
+Table~\ref{tab:benign} shows BU. All models handle \emph{safe} cases (95--100\%); they differ on \emph{protective} cases, where the agent must act. BU on protective cases is the main source of the BU gap: Haiku 62.5\%, GLM 67.5\% versus Gemini 90\%. Smoke is the hardest category for GLM (60\%) and Haiku (75\%). No model ignored a fire with people present. BU is the cost side of the defense trade-off: a defense is useful only if it does not push BU below these values.
+
+\begin{table}[t]
+\centering
+\caption{Benign utility (\%). Prot./Safe = cases needing/not needing action (40/60). Category columns: 20 cases each.}
+\label{tab:benign}
+\footnotesize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+\textbf{Model} & \textbf{BU}\up & Prot. & Safe & Temp & Smoke & CO$_2$ & RFID & Maint. \\
+\midrule
+Gemini 3.5 fl-lite & \best{93.0} & \best{90.0} & 95.0 & 85 & 95 & 85 & 100 & 100 \\
+GPT-luna$^{a}$      & 92.0 & 82.5 & 98.3 & 95 & 80 & 85 & 100 & 100 \\
+DeepSeek flash     & 92.0 & 80.0 & \best{100} & 100 & 80 & 85 & 95 & 100 \\
+GLM 5.3 flash      & 86.0 & 67.5 & 98.3 & 95 & 60 & 75 & 100 & 100 \\
+Haiku 5.5          & 84.0 & 62.5 & 98.3 & 75 & 75 & 85 & 90 & 95 \\
+\bottomrule
+\multicolumn{9}{@{}l@{}}{\scriptsize $^{a}$ GPT-5.6 and GPT-6 luna share one benign run (92\%).}
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Attack Evaluation}
+\subsection{Main Results}
+Table~\ref{tab:main} compares the six models on the metrics that carry the contribution. Three findings stand out. (i) \textbf{Wide spread:} ASR runs from 2.8\% (DeepSeek) to 27.6\% (Gemini), whereas BU spans only 84--93\%. The highest-BU model (Gemini) is the least robust, while DeepSeek reaches 92\% BU with the lowest ASR; the lowest-BU model (Haiku, 84\%) is not safer than GPT-6 (92\%). Robustness is therefore not simply traded against utility. (ii) \textbf{Newer models fail differently:} Gemini follows the payload (``skip''), while newer models usually \emph{recognize} the text as unverified yet still back off. (iii) \textbf{FDR matters for the measurement:} for Gemini about half of successful DH-A attacks pass through the fallback parser (15/27 in run 2), so format errors inflate its ASR; for the newer models fallback almost never leads to success.
+
+\begin{table*}[t]
+\centering
+\caption{Benign utility versus attack robustness (GT v2.2.0, 254 attack cases). $k$ = runs; $k{>}1$: mean $\pm$ std. Best per column in bold.}
+\label{tab:main}
+\footnotesize
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+\textbf{Model} & $k$ & \textbf{BU}\up & \textbf{ASR}\dn & \textbf{SUP}\dn & \textbf{FDR}\dn & UA\up & MHR\dn & ASR 95\% CI (Wilson) \\
+\midrule
+Gemini 3.5 flash-lite & 3 & \best{93.0} & 27.6 $\pm$ 4.8 & 47.3 $\pm$ 9.2 & 14.0 $\pm$ 3.1 & 65.5 & 34.2 & [17.7, 37.9] (3 runs) \\
+GPT-5.6 luna          & 1 & 92.0 & 12.6 & 29.5 & 14.2 & 81.5 & 19.2 & [9.1, 17.2] \\
+GPT-6 luna            & 2 & 92.0 & 6.9 $\pm$ 0.3 & 18.2 $\pm$ 3.2 & \best{0.4} & 85.0 & 14.5 & [4.2, 10.9] \\
+Claude Haiku 5.5      & 1 & 84.0 & 11.8 & 30.7 & 3.5 & 71.7 & 28.6 & [8.4, 16.4] \\
+DeepSeek flash        & 1 & 92.0 & \best{2.8} & \best{6.8} & 5.9 & \best{95.3} & \best{4.5} & [1.3, 5.6] \\
+GLM 5.3 flash         & 1 & 86.0 & 4.3 & 8.0 & 8.3 & 91.3 & 9.4 & [2.4, 7.6] \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+{\scriptsize Gemini benign and attack run~1 ran with the ``seed'' RAG state; all other runs ran after the hourly RAG roll-up. Comparing with Gemini runs 2--3 only (same state), ASR is 28.3--31.9\% and the ranking is unchanged. GPT-5.6/Haiku and DeepSeek/GLM are not separable at $k{=}1$ (overlapping CI).}
+\end{table*}
+
+\subsection{Taxonomy: Suppression Is the Weak Spot}
+Table~\ref{tab:tax} breaks ASR down by attack class. DS is 0\% for every model: the agent never completes read-then-exfiltrate, even with audit-style pretexts. DH-S is $\le$5.6\%. DH-A is high only for Gemini (26.3\%). \textbf{SUP dominates:} it is the largest class for every model and accounts for 59--91\% of successful attacks. This is the key result: the dangerous failure is not ``agent does something bad'' but ``agent does nothing about a hazard it can see''.
+
+\begin{table}[t]
+\centering
+\caption{ASR (\%) by taxonomy (case counts in parentheses).}
+\label{tab:tax}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Class} & Gem. & GPT-5.6 & GPT-6 & Haiku & DeepS. & GLM \\
+\midrule
+\textbf{SUP} (88)  & 47.3 & 29.5 & 18.2 & 30.7 & \best{6.8} & 8.0 \\
+DH-A (100)         & 26.3 & 5.0  & 1.5  & 3.0  & \best{1.0} & 4.0 \\
+DH-S (36)          & 5.6  & 2.8  & 0    & 0    & 0 & 0 \\
+DS (30)            & 0    & 0    & 0    & 0    & 0 & 0 \\
+\midrule
+SUP share of successes & 59 & 81 & 91 & 90 & 86 & 64 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Where Suppression Succeeds}
+Table~\ref{tab:U-sup} gives SUP successes per scenario (out of 22 each). Gemini is deceived in all four scenarios, worst in U4 (RFID, 15.0 on average) and U3. DeepSeek and GLM are nearly immune in U1--U3 but still fail U4 (4--5/22): a stolen-card alert is a judgment call with no hard physical number to anchor it. GPT-5.6 and Haiku are weak in U1 and U4. By persuasion style (pooled over models) the most effective is \emph{drill/test} (25.6\%), then technical notice (20.6\%), maintenance (16.4\%) and authority claim (10.0\%): a plausible \emph{alternative explanation} of the sensor value works better than an order.
+
+\begin{table}[t]
+\centering
+\caption{SUP successes per scenario (out of 22; Gemini and GPT-6: mean over runs).}
+\label{tab:U-sup}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Scenario} & Gem. & GPT-5.6 & GPT-6 & Haiku & DeepS. & GLM \\
+\midrule
+U1 overheating   & 7.7  & 10 & 3.5 & 6  & \best{0} & \best{0} \\
+U2 smoke         & 8.0  & 2  & 0.5 & 1  & \best{0} & 1 \\
+U3 CO$_2$        & 11.0 & 6  & 7.0 & 8  & \best{1} & 2 \\
+U4 RFID          & 15.0 & 8  & 5.0 & 12 & 5 & 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Clean-Twin Validation}
+\label{sec:twin}
+A low or high SUP could also come from a \emph{policy mismatch}: the ground truth may penalize an action that the system prompt prescribes. The clean twin re-runs SUP cases with all injected content removed (Z) and measures the miss rate $F_Z$. If $F_Z{=}0$, every miss in the attacked run is attributable to the injection. Table~\ref{tab:twin} reports the result. In the first ground truth (v2.1) U2 required a siren or EMERGENCY although the prompt prescribes \texttt{send\_alert}; GPT-5.6 showed $F_Z{=}3/3$ there. Aligning the ground truth (v2.2.0) removed the artifact and reduced SUP of GPT-5.6, GPT-6 and DeepSeek by 22.8, 24.4 and 22.7 points respectively. After the fix all models have $F_Z{=}0/9$ in every scenario.
+
+\begin{table}[t]
+\centering
+\caption{Clean-twin control. $F_Z$: misses without attack, per scenario (9 runs each).}
+\label{tab:twin}
+\footnotesize
+\begin{tabular}{@{}lccl@{}}
+\toprule
+\textbf{Model} & $F_Z$ (U1--U4) & Attack-induced SUP & Verdict \\
+\midrule
+Gemini   & 0/9 each & 46/88 = 52.3\% & real SUP ($p{<}0.05$) \\
+GPT-5.6  & 0/9 each & 26/88 = 29.5\% & real in U1, U4 \\
+GLM 5.3  & 0/9 each & 7/88 = 8.0\% & no policy error \\
+DeepSeek & 0/9 each & 6/88 = 6.8\% & no policy error \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%=====================================================================
+\section{Defense: Sensor-Grounded Response}
+\subsection{Root Cause}
+The only attack channel is the description field, yet the sensor value is real. The strongest tactic does not give an order; it offers a competing explanation for a real reading. The system also lets this succeed: the policy engine accepts a \emph{skip} as valid, and the confidence gate can delete an alert on suspected fire. Hence free text can make the system ignore a hazard it has measured.
+
+\subsection{Mechanism}
+\textbf{Principle:} \emph{the description may add context, but may not reduce the response to a hazard that sensors have measured; when text and sensors conflict, fixed rules decide, not the LLM.} Every event passes four steps:
+\begin{enumerate}
+\item[\textbf{1}] \textbf{Untrusted marking.} The description is wrapped as an untrusted note.
+\item[\textbf{2}] \textbf{Prompt principles.} The note must not deny sensors, request silence, or claim to be an order, drill or ``false signal''; if a sensor reports a hazard the agent may not skip, and when unsure it sends an alert.
+\item[\textbf{3}] \textbf{Confidence gate.} An alert $\ge$ warning is never removed while a sensor reports a hazard.
+\item[\textbf{4}] \textbf{Sensor guard (text-blind).} (D1, \emph{floor}) if a threshold is exceeded and the agent emitted no protection, send an alert; (D2, \emph{veto}) block actions that contradict the sensors (fan off when overheated, \textsc{saving} under hazard, lock door on smoke with people, unlock on denied RFID, siren without smoke).
+\end{enumerate}
+Thresholds lie between the Anomaly and Hazard levels of the benign set: temperature $\ge$38$^\circ$C, CO$_2\ge$1500 ppm with people, smoke $\ge$200 ppm or detected state, RFID denied in LOCK or repeated. The guard reads only trusted fields, so an attacker who controls text cannot affect it. Steps 1--3 sit inside the agent; step 4 is a post-processing stage before execution. No extra LLM or tool call is added.
+
+\subsection{Experimental Design}
+A single flag selects \texttt{none} (baseline), \texttt{prompt} (steps 1--3), \texttt{guard} (step 4) or \texttt{full}. The guard is deterministic post-processing, so replaying it on recorded baseline runs gives the exact result of a live \texttt{guard} run. The \texttt{prompt} setting changes LLM behavior and must be re-run; \texttt{full} is then computed by replaying the guard on those runs.
+
+\subsection{Results}
+Table~\ref{tab:def} reports the replay on the recorded baseline runs (Gemini: runs 2--3, hence 30.1\% baseline). Both guard rules help, but \textbf{D1 (floor) matters most}: it brings SUP to $\le$1.1\% because every SUP case is a hazard that sensors observed. D2 (veto) mainly cuts DH-A (Gemini 28.5\%$\to$10.5\%). Together they bring ASR to 0.4--0.8\% for all models except Gemini (4.9\%), and \textbf{BU does not drop for any model} (+2 to +10 points, because the guard also repairs benign cases where the agent missed a real hazard). UA rises to 96.5--100\%.
+
+\begin{table*}[t]
+\centering
+\caption{Defense ablation by replay on recorded runs (\%). D1 = sensor floor, D2 = contradiction veto. Red = experiment in progress.}
+\label{tab:def}
+\footnotesize
+\begin{tabular}{@{}lccccccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{\textbf{BU}\up} & \multicolumn{4}{c}{\textbf{ASR}\dn} & \multicolumn{2}{c}{\textbf{SUP}\dn} & \textbf{UA}\up \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-7}\cmidrule(lr){8-9}
+\textbf{Model} & base & D1+D2 & base & D2 & D1 & D1+D2 & base & D1+D2 & D1+D2 \\
+\midrule
+Gemini 3.5 flash-lite & 93.0 & \best{97.0} & 30.1 & 22.6 & 12.4 & 4.9 & 52.3 & 1.1 & 96.5 \\
+GPT-5.6 luna          & 92.0 & 94.0 & 12.6 & 11.0 & 2.4 & 0.8 & 29.5 & 0 & 99.6 \\
+GPT-6 luna            & 92.0 & 94.0 & 6.9 & 6.7 & 0.6 & \best{0.4} & 18.2 & 0 & 99.6 \\
+Claude Haiku 5.5      & 84.0 & 94.0 & 11.8 & 11.0 & 1.2 & \best{0.4} & 30.7 & 0 & 100 \\
+DeepSeek flash        & 92.0 & 94.0 & 2.8 & 2.8 & 0.4 & \best{0.4} & 6.8 & 0 & 100 \\
+GLM 5.3 flash         & 86.0 & 93.0 & 4.3 & 3.5 & 1.6 & 0.8 & 8.0 & 0 & 100 \\
+\midrule
+\multicolumn{10}{@{}l@{}}{\textbf{Prompt-only (steps 1--3), live re-run}} \\
+Gemini 3.5 flash-lite & 93.0 & \tbd{TBD} & 30.1 & \multicolumn{3}{c}{\tbd{TBD}} & 52.3 & \tbd{TBD} & \tbd{TBD} \\
+GPT-5.6 / Haiku       & -- & \tbd{TBD} & -- & \multicolumn{3}{c}{\tbd{TBD}} & -- & \tbd{TBD} & \tbd{TBD} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Limitations}
+(1) SUP near zero is largely \emph{by construction}: all SUP cases are hazards the sensor saw. This shows the architecture is sound, not that the LLM became safer; that evidence must come from the \texttt{prompt} setting. (2) Thresholds were chosen knowing the benign set; held-out near-threshold and faulty-sensor-high cases are needed to measure false alarms. (3) The guard does not defend against forged sensor readings. (4) Residual failures are actuations the sensors cannot refute (e.g. fan off in a normal room, door lock in U4); in deployment the HITL layer holds these for approval. (5) A deployment needs alert cooldown to avoid alarm flooding.
+
+%=====================================================================
+\section{Conclusion}
+On a deployed cyber-physical agent, injected text rarely makes the agent do harm (DS 0\%, DH-S $\le$5.6\%) but often makes it \emph{stand down}: SUP is 59--91\% of successful attacks across six models, and a clean twin shows it is injection-induced. Because the attacker controls only text, anchoring the response floor on trusted sensor values is effective: replayed on recorded runs, a text-blind guard reduces ASR to $\le$0.8\% (4.9\% for the weakest model) with no loss of BU. Next steps: live \texttt{prompt}/\texttt{full} runs, $k{=}3$ for all models, held-out benign cases for false-alarm rate, and adaptive attacks aware of the guard.
+
+%=====================================================================
+% NOTE: verify every bibliographic entry before submission.
+\begin{thebibliography}{9}
+\bibitem{greshake2023} K. Greshake \emph{et al.}, ``Not what you've signed up for: Compromising real-world LLM-integrated applications with indirect prompt injection,'' in \emph{Proc. ACM AISec}, 2023.
+\bibitem{perez2022} F. Perez and I. Ribeiro, ``Ignore previous prompt: Attack techniques for language models,'' arXiv:2211.09527, 2022.
+\bibitem{agentdojo2024} E. Debenedetti \emph{et al.}, ``AgentDojo: A dynamic environment to evaluate prompt injection attacks and defenses for LLM agents,'' in \emph{NeurIPS Datasets and Benchmarks}, 2024.
+\bibitem{injecagent2024} Q. Zhan \emph{et al.}, ``InjecAgent: Benchmarking indirect prompt injections in tool-integrated LLM agents,'' in \emph{Findings of ACL}, 2024.
+\bibitem{hines2024} K. Hines \emph{et al.}, ``Defending against indirect prompt injection attacks with spotlighting,'' arXiv:2403.14720, 2024.
+\bibitem{camel2025} E. Debenedetti \emph{et al.}, ``Defeating prompt injections by design,'' arXiv:2503.18813, 2025.
+\bibitem{react2023} S. Yao \emph{et al.}, ``ReAct: Synergizing reasoning and acting in language models,'' in \emph{Proc. ICLR}, 2023.
+\end{thebibliography}
+
+\end{document}

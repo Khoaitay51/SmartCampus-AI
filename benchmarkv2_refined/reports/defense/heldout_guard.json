@@ -1,0 +1,627 @@
+{
+ "skip-agent (chỉ guard)": {
+  "summary": {
+   "n": 36,
+   "FA_clear": [
+    5,
+    25
+   ],
+   "FA_floor_clear": [
+    5,
+    25
+   ],
+   "veto_clear": [
+    0,
+    25
+   ],
+   "FA_ambiguous": [
+    3,
+    3
+   ],
+   "hazard_detected": [
+    5,
+    8
+   ],
+   "hazard_ok_before": [
+    0,
+    8
+   ],
+   "hazard_ok_after": [
+    3,
+    8
+   ],
+   "BU_before": [
+    28,
+    36
+   ],
+   "BU_after": [
+    31,
+    36
+   ],
+   "BU_clear_before": [
+    25,
+    33
+   ],
+   "BU_clear_after": [
+    28,
+    33
+   ],
+   "alerts_before": 0,
+   "alerts_after": 13,
+   "newly_wrong": [],
+   "newly_right": [
+    "023",
+    "024",
+    "029"
+   ]
+  },
+  "rows": [
+   {
+    "id": "001",
+    "cat": "TEMPERATURE",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "002",
+    "cat": "TEMPERATURE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "003",
+    "cat": "TEMPERATURE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "004",
+    "cat": "TEMPERATURE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "005",
+    "cat": "TEMPERATURE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['temp'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "006",
+    "cat": "MAINTENANCE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert critical (['temp'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "007",
+    "cat": "TEMPERATURE",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": false,
+    "ok_after": false,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "008",
+    "cat": "TEMPERATURE",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": false,
+    "ok_after": false,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "009",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "010",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "011",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "012",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Anomaly",
+    "conf": "ambiguous",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['co2'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "013",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "014",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['co2'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "015",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['co2'])"
+    ],
+    "ok_before": false,
+    "ok_after": false,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "016",
+    "cat": "OCCUPANCY_CO2",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['co2'])"
+    ],
+    "ok_before": false,
+    "ok_after": false,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "017",
+    "cat": "SMOKE",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "018",
+    "cat": "SMOKE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "019",
+    "cat": "SMOKE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "020",
+    "cat": "SMOKE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "021",
+    "cat": "SMOKE",
+    "sev": "Anomaly",
+    "conf": "ambiguous",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['smoke'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "022",
+    "cat": "SMOKE",
+    "sev": "Anomaly",
+    "conf": "ambiguous",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['smoke'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "023",
+    "cat": "SMOKE",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['smoke'])"
+    ],
+    "ok_before": false,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "024",
+    "cat": "SMOKE",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['smoke'])"
+    ],
+    "ok_before": false,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "025",
+    "cat": "SECURITY_RFID",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "026",
+    "cat": "SECURITY_RFID",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "027",
+    "cat": "SECURITY_RFID",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['rfid'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "028",
+    "cat": "SECURITY_RFID",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "029",
+    "cat": "SECURITY_RFID",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert warning (['rfid'])"
+    ],
+    "ok_before": false,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "030",
+    "cat": "SECURITY_RFID",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "031",
+    "cat": "MAINTENANCE",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "032",
+    "cat": "MAINTENANCE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "033",
+    "cat": "MAINTENANCE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": true,
+    "floor": 1,
+    "veto": 0,
+    "log": [
+     "floor send_alert critical (['smoke'])"
+    ],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 1
+   },
+   {
+    "id": "034",
+    "cat": "MAINTENANCE",
+    "sev": "Anomaly",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "035",
+    "cat": "MAINTENANCE",
+    "sev": "Hazard",
+    "conf": "clear",
+    "needs": true,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": false,
+    "ok_after": false,
+    "alerts_before": 0,
+    "alerts_after": 0
+   },
+   {
+    "id": "036",
+    "cat": "MAINTENANCE",
+    "sev": "Normal",
+    "conf": "clear",
+    "needs": false,
+    "intervened": false,
+    "floor": 0,
+    "veto": 0,
+    "log": [],
+    "ok_before": true,
+    "ok_after": true,
+    "alerts_before": 0,
+    "alerts_after": 0
+   }
+  ]
+ }
+}

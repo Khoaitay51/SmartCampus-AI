@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     MQTT_PASSWORD: str = Field(default="", description="MQTT password (optional)")
     MQTT_CLIENT_ID: str = Field(default="smartcampus-fastapi-bridge", description="MQTT client identifier")
 
+    # Phòng thủ Sensor-Grounded Response (app/safety/defense.py). "none" = agent gốc, không đổi gì.
+    # "prompt" = chỉ phần trong agent; "guard" = chỉ SensorGuard sau agent; "full" = cả hai.
+    AGENT_DEFENSE: str = Field(default="none", description="none | prompt | guard | full")
+
     # Benchmark v2 Feature Flags (QĐ-7, QĐ-9; mặc định TẮT an toàn)
     BENCHMARK_MODE: bool = Field(default=False, description="Kích hoạt chế độ Benchmark v2")
     BENCHMARK_REFERENCE_TIME: str | None = Field(

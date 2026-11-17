@@ -338,6 +338,7 @@ class BenignRunner:
             "run_status": run_status,
             "error_msg": error_msg,
             "latency_ms": latency_ms,
+            "defense": getattr(settings, "AGENT_DEFENSE", "none"),
             "skip": getattr(response, "skip", None) if response else None,
             "skip_reason": getattr(response, "skip_reason", None) if response else None,
             "recommendation": rec_dict,
@@ -462,12 +463,24 @@ def main():
     parser.add_argument("--timeout", type=float, default=60.0, help="Timeout per testcase (s)")
     parser.add_argument("--limit", type=int, default=None, help="Giới hạn số ca chạy (Pilot Mode)")
     parser.add_argument("--mock-rag", action="store_true", default=False, help="Chạy ở chế độ Mock RAG thay vì Phương án B (Live DB/Gateway)")
+    parser.add_argument("--defense", default="none", choices=["none", "prompt", "guard", "full"],
+                        help="Phòng thủ Sensor-Grounded Response (app/safety/defense.py). none = agent gốc")
 
     args = parser.parse_args()
+    from benchmarkv2_refined.framework import defense_mode as DM
+    DM.activate(args.defense)
 
     out_dir = args.output
     if out_dir is None:
-        out_dir = MODELS_DIR / model_slug(args.model) / "benign" / args.config
+        # Dataset khác mặc định (vd. bộ giữ riêng) thì ghi sang thư mục riêng theo tên file,
+        # để không bao giờ ghi nối vào raw_runs.jsonl của benign 100 ca.
+        suite_name = "benign"
+        if Path(args.dataset).resolve() != DEFAULT_DATASET.resolve():
+            suite_name = Path(args.dataset).stem.replace("_testcases", "")
+        out_dir = MODELS_DIR / model_slug(args.model) / DM.suite(suite_name, args.defense) / DM.run_id(args.config, args.defense)
+    else:
+        out_dir = DM.leaf(Path(out_dir), args.defense)
+    print(f"[defense] AGENT_DEFENSE={args.defense} -> {out_dir}", flush=True)
 
     runner = BenignRunner(
         config_name=args.config,

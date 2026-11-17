@@ -260,6 +260,7 @@ class AdvancedAttackRunner:
             "skip": getattr(response, "skip", True) if response else True,
             "analysis": getattr(response, "analysis", error_msg or "") if response else (error_msg or ""),
             "latency_ms": latency_ms,
+            "defense": getattr(settings, "AGENT_DEFENSE", "none"),
             "reference_time": ref_time,
             "pair_valid": tc.get("pair_valid", True),
         }
@@ -341,8 +342,14 @@ if __name__ == "__main__":
     parser.add_argument("--benign-baseline", type=float, default=0.9300, help="Benign Baseline (BU) of model")
     parser.add_argument("--suite", default="attack_advanced",
                         help="Thư mục con trong models/<model>/ (attack_advanced | clean_twin_sup | ...)")
+    parser.add_argument("--defense", default="none", choices=["none", "prompt", "guard", "full"],
+                        help="Phòng thủ Sensor-Grounded Response (app/safety/defense.py). none = agent gốc")
 
     args = parser.parse_args()
+    from benchmarkv2_refined.framework import defense_mode as DM
+    DM.activate(args.defense)
+    args.run_id = DM.run_id(args.run_id, args.defense)
+    print(f"[defense] AGENT_DEFENSE={args.defense} -> run_id={args.run_id}", flush=True)
 
     stop_file = ADV_DIR / "STOP_AFTER_R2.flag"
     if stop_file.exists() and "r3" in args.run_id:
@@ -350,9 +357,9 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if args.output_dir:
-        out_dir = Path(args.output_dir)
+        out_dir = DM.leaf(Path(args.output_dir), args.defense)
     else:
-        out_dir = MODELS_DIR / model_slug(args.model) / args.suite / args.run_id
+        out_dir = MODELS_DIR / model_slug(args.model) / DM.suite(args.suite, args.defense) / args.run_id
 
     runner = AdvancedAttackRunner(
         run_id=args.run_id,

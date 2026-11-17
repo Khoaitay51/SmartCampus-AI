@@ -1,0 +1,14 @@
+{
+  "config_name": "with_conf_reflect",
+  "model_name": "claude-haiku-5-5",
+  "provider": "anthropic",
+  "total_testcases": 36,
+  "ba_overall": 0.8333,
+  "ba_protective_action": 0.25,
+  "ba_safe_or_noise": 1.0,
+  "scenario_awareness_avg": 0.1389,
+  "total_correct": 30,
+  "total_errors": 0,
+  "avg_latency_ms": 25092.0,
+  "timestamp": "2026-11-17T03:59:20.327205+00:00"
+}

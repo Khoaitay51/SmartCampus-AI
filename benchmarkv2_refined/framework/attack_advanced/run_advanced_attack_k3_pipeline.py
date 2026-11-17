@@ -61,6 +61,7 @@ def run_round(
     benign_baseline: float,
     limit: int | None,
     use_mock_rag: bool,
+    defense: str = "none",
 ) -> bool:
     print(f"\n{'='*70}\n>>> START ADVANCED ATTACK ROUND: {run_id} (provider={provider}, model={model})\n{'='*70}", flush=True)
     cmd = [
@@ -71,6 +72,7 @@ def run_round(
         "--model", model,
         "--timeout", str(timeout),
         "--benign-baseline", str(benign_baseline),
+        "--defense", defense,
     ]
     if limit is not None:
         cmd.extend(["--limit", str(limit)])
@@ -87,18 +89,23 @@ def run_round(
     return True
 
 
-def synthesize(prefix: str | None, model: str, benign_baseline: float, rounds: list[str]) -> None:
+def synthesize(prefix: str | None, model: str, benign_baseline: float, rounds: list[str], defense: str = "none") -> None:
     print(f"\n{'='*70}\n>>> SYNTHESIZING K=3 ADVANCED ATTACKS ({model})\n{'='*70}", flush=True)
     cmd = [
         PYTHON_EXE, str(ADV_DIR / "synthesize_attack_k3.py"),
         "--model-name", model,
         "--benign-baseline", str(benign_baseline),
+        "--defense", defense,
     ]
-    runs_dir = MODELS_DIR / _slugify(model) / "attack_advanced"
+    sfx = "" if defense == "none" else f"_def_{defense}"
+    runs_dir = MODELS_DIR / _slugify(model) / f"attack_advanced{sfx}"
     cmd.extend(["--runs-dir", str(runs_dir)])
+    if sfx:
+        rounds = [r if r.endswith(sfx) else r + sfx for r in rounds]
+        prefix = None
     if prefix:
         cmd.extend(["--run-prefix", prefix])
-    elif len(rounds) == 3:
+    if not prefix and len(rounds) == 3:
         cmd.extend([
             "--r1", str(runs_dir / rounds[0] / "eval_advanced_attack.json"),
             "--r2", str(runs_dir / rounds[1] / "eval_advanced_attack.json"),
@@ -125,6 +132,8 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--use-mock-rag", action="store_true", default=False)
     parser.add_argument("--synthesize-only", action="store_true", default=False)
+    parser.add_argument("--defense", default="none", choices=["none", "prompt", "guard", "full"],
+                        help="Phòng thủ Sensor-Grounded Response. Kết quả ghi vào attack_advanced_def_<mode>/")
 
     args = parser.parse_args()
     tag = args.tag or (_slugify(args.model) if args.provider in ("ollama", "deepseek") else None)
@@ -151,12 +160,13 @@ def main():
                 benign_baseline=bu,
                 limit=args.limit,
                 use_mock_rag=args.use_mock_rag,
+                defense=args.defense,
             )
             if not ok:
                 print(f"[!] Pipeline halted due to error in {rid}.", flush=True)
                 sys.exit(1)
 
-    synthesize(prefix=prefix, model=args.model, benign_baseline=bu, rounds=rounds)
+    synthesize(prefix=prefix, model=args.model, benign_baseline=bu, rounds=rounds, defense=args.defense)
     print("\n[✓] ALL K=3 ADVANCED ATTACK RUNS AND SYNTHESIS COMPLETED!", flush=True)
 
 
