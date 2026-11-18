@@ -18,28 +18,20 @@ Ký hiệu: ✓ có · ~ một phần · ✗ không · — không áp dụng · 
 
 | Bài | Miền | Thiết bị vật lý | BU | ASR | Taxonomy | **SUP (bỏ sót)** | **Defense** | **Đối chứng cặp** (≈ clean twin) | Chấm không LLM-judge |
 |:--|:--|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| *Attack agent thường (môi trường số)* | | | | | | | | | |
 | InjecAgent (#17) | Công cụ số (có smart home) | ✗ | ✗ | ✓ | ✓ (DH, DS) | ✗ | ✗ | ✗ | ? |
 | AgentDojo (#20) | Workspace, Slack, Travel, Bank | ✗ | ✓ | ✓ | ~ | ✗ | ~ đánh giá có sẵn | ✗ | ✓ |
-| ASB (#21) | 10 miền | ✗ | ✓ | ✓ | ✓ | ✗ | ~ đánh giá có sẵn | ✗ | ? |
-| EASE (#22) | Email (Gmail thật) | ✗ | ✗ | ✓ | ✗ | ✗ | ~ 4 điều kiện phòng thủ | ✗ | ✓ |
-| Ignored, Not Refused (#25) | InjecAgent, AgentDojo | ✗ | ? | ✓ | ✓ 6 hành vi | ✗ | ✗ | ✗ | ✗ |
-| ToolHijacker (#32) | Chọn tool | ✗ | ? | ✓ | ✗ | ✗ | ~ đánh giá, thất bại | ✗ | ? |
-| AgentPoison (#38) | Lái xe, QA, y tế | ~ | ✓ | ✓ | — | ✗ | ~ đánh giá có sẵn | ✗ | ? |
-| Sleeper Memory (#42) | Memory agent | ✗ | ? | ✓ | — | ✗ | ~ nhiều phòng thủ có sẵn | ✗ | ? |
 | AgentAbstain (#23) | 42 sandbox MCP | ✗ | ✓ | — | ✓ 8 kịch bản | ~ *ngược chiều* | ✗ | ✓ cặp T⁺/T⁻ | ? |
-| EpiSEM-Bench (#24) | 6 miền số | ✗ | ✓ | — | — | ✗ | ~ | ✓ thế giới W⁻/W⁺ | ? |
-| **Evil-AI (#7)** | Smart home, ICS, building… | ✓ servo | ~ | ✓ | ✓ 5 vector | ✗ | ✗ | ✗ | ✗ |
-| **PromptShield-Home (#19)** | Smart home đa phương thức | ~ | ✓ (SCR) | ✓ (UER) | ✓ 6 nhóm | ~ *do từ chối, không do tấn công* | ~ so kiến trúc (oracle) | ✗ | ? |
-| **POEF (IoT #4)** | Robot (Franka, Unitree) | ✓ | ✓ (TSR) | ✓ (BJSR) | ✓ 6 rủi ro | ✗ | ~ prompt + guard model | ✗ | ? |
-| BEAT (IoT #1) | Embodied (mô phỏng) | ~ | ? | ✓ | — | ✗ | ~ thử, kém | ✗ | ? |
-| FuncPoison (IoT #2) | Lái xe tự hành | ~ | ? | ✓ | — | ✗ | ~ prompt defense thất bại | ✗ | ? |
-| BALD (IoT #5) | Xe, robot (mô phỏng) | ~ | ? | ✓ | ✓ 3 kênh | ✗ | ~ một phần | ✗ | ? |
-| CPS-Guard (#4) | PLC/SCADA (proxy) | ~ | ? | ~ | ✓ 3 dạng | ✗ | ✓ đề xuất | ✗ | ? |
-| AgentSentry (#28) | AgentDojo | ✗ | ✓ | ✓ | — | ✗ | ✓ đề xuất | ~ chạy lại phản thực (để phòng thủ) | ? |
 | CaMeL (#29) | AgentDojo | ✗ | ✓ | ✓ | — | ✗ | ✓ đề xuất | ✗ | ✓ |
-| Firewall (#18) | AgentDojo, ASB, InjecAgent | ✗ | ✓ | ✓ | — | ✗ | ✓ đề xuất | ✗ | ? |
+| AgentSentry (#28) | AgentDojo | ✗ | ✓ | ✓ | — | ✗ | ✓ đề xuất | ~ chạy lại phản thực (để phòng thủ) | ? |
 | SkillGuard (#44) | AgentDojo | ✗ | ✓ | ✓ | — | ✗ | ✓ đề xuất | ✗ | ? |
-| **SmartCampus (ours)** | Building management, cảm biến thật | ✓ | ✓ | ✓ | ✓ 4 lớp | **✓** | ✓ SensorGuard (6 model) | **✓ clean twin** | ✓ |
+| *IoT / CPS agent (thiết bị vật lý, smart home)* | | | | | | | | | |
+| Evil-AI (#7) | Smart home, ICS, building… | ✓ servo | ~ | ✓ | ✓ 5 vector | ✗ | ✗ | ✗ | ✗ |
+| PromptShield-Home (#19) | Smart home đa phương thức | ~ | ✓ (SCR) | ✓ (UER) | ✓ 6 nhóm | ~ *do từ chối, không do tấn công* | ~ so kiến trúc (oracle) | ✗ | ? |
+| POEF (IoT #4) | Robot (Franka, Unitree) | ✓ | ✓ (TSR) | ✓ (BJSR) | ✓ 6 rủi ro | ✗ | ~ prompt + guard model | ✗ | ? |
+| CPS-Guard (#4) | PLC/SCADA (proxy) | ~ | ? | ~ | ✓ 3 dạng | ✗ | ✓ đề xuất | ✗ | ? |
+| *Ours* | | | | | | | | | |
+| **SmartCampus (ours)** | Building management, cảm biến thật | ✓ | ✓ | ✓ | ✓ 4 lớp | **✓** | ✓ Guardrail (6 model) | **✓ clean twin** | ✓ |
 
 **Đọc bảng:**
 - **SUP:** trong 52 bài, không bài nào đo tấn công *nhằm khiến agent không phản ứng* với nguy hiểm đã đo. Gần nhất là PromptShield-Home (agent bỏ sót người ngã, nhưng do từ chối quá mức chứ không do tấn công) và AgentAbstain (chiều ngược lại: khi nào agent *không nên* hành động). Mọi benchmark tấn công còn lại đo **commission** (làm điều có hại).
@@ -62,12 +54,10 @@ Ký hiệu: ✓ có · ~ một phần · ✗ không · — không áp dụng · 
 |:--|:--|:--|:--|
 | CaMeL (#29) | AgentDojo | GPT-4o: 233 → 0 vụ thành công | Hoàn thành tác vụ 84% → 77% |
 | AgentSentry (#28) | AgentDojo | ASR 0% | UA 76.1%; từ chối nhầm 2.06–5.15% |
-| Firewall (#18) | AgentDojo, ASB, InjecAgent | ASR 0% | Giữ nguyên BU |
-| SkillGuard (#44) | AgentDojo | ASR 0% ở 3 miền; Slack 4.76–14.29% | Giữ 93.21–94.08% năng lực |
-| AutoDefense (#37) | Jailbreak | 55.74% → 7.95% | FPR tới 37.32% (cấu hình 7B) |
+| SkillGuard (#44) | AgentDojo | ASR 0% ở 3 miền; Slack 4.76–14.29% | Giữ 93.21–94.08% năng lực (Travel) |
 | SafeRobot prompt (POEF) | Robot | Giảm BJSR | TSR GPT-4o −82.67 điểm |
 | CPS-Guard (#4) | CPS proxy, 300 input | Lỗi 60–78% → < 12% | Trễ +10–18%; BU: sheet không nêu |
-| **SensorGuard (ours)** | SmartCampus, 6 model | ASR 2.8–27.6% → 0.4–4.5% | **BU +2 đến +10 điểm**; báo nhầm 0–3/60 ca (replay) |
+| **Guardrail (ours)** | SmartCampus, 6 model | ASR 2.8–27.6% → 0.4–4.5% | **BU +2 đến +10 điểm**; báo nhầm 0–3/60 ca (replay) |
 
 ## 5. Bài gần nhất cần phân biệt rõ
 
