@@ -1,202 +1,262 @@
-# 🤖 SmartCampus AI Agent & Central Backend Service
+# SmartCampus AI: tác nhân ra quyết định cho tòa nhà thông minh
 
-> **Phân hệ Trí tuệ Nhân tạo & Dịch vụ Quản trị Trung tâm (Central Backend & AI Decision Engine)**  
-> Xây dựng trên nền tảng **FastAPI**, **AsyncIO**, **PostgreSQL 16 với tiện ích mở rộng pgvector**, **Ollama (Local SLM Qwen2:1.5b & Nomic Embeddings)**, **Google Gemini API**, và **aiomqtt WebSocket Tunnel Bridge**.
+SmartCampus AI là phân hệ **AI Decision Engine** của hệ thống SmartCampus BMS. Khi cảm biến trong phòng học báo một sự kiện bất thường (nhiệt độ tăng, có khói, CO₂ cao, quẹt thẻ lạ, thiết bị hỏng), một tác nhân LLM (**ReActXenAgent**) tự truy xuất bằng chứng từ dữ liệu vận hành và quy định của trường, rồi đề xuất **đúng một hành động** điều khiển thiết bị. Mọi đề xuất nhạy cảm phải được người quản trị duyệt (human-in-the-loop) trước khi chạm tới phần cứng.
+
+Repo này gồm agent, bộ nhớ dài hạn trên pgvector, cầu nối MQTT/WebSocket với Edge Gateway và Digital Twin, cùng API quản trị trung tâm (FastAPI, JWT, RBAC).
+
+**Mục lục**
+
+1. [Giới thiệu](#1-giới-thiệu)
+2. [Kiến trúc tổng thể](#2-kiến-trúc-tổng-thể)
+3. [ReActXenAgent](#3-reactxenagent)
+4. [Bộ nhớ dài hạn và học từ phản hồi](#4-bộ-nhớ-dài-hạn-và-học-từ-phản-hồi)
+5. [Tự chủ phân tầng: HITL và Autopilot](#5-tự-chủ-phân-tầng-hitl-và-autopilot)
+6. [Benchmark benign](#6-benchmark-benign)
+7. [Cấu trúc mã nguồn](#7-cấu-trúc-mã-nguồn)
+8. [Cài đặt và chạy](#8-cài-đặt-và-chạy)
 
 ---
 
-## 📌 Tổng quan Phân hệ
+## 1. Giới thiệu
 
-Thư mục `AI + Backend` đảm nhiệm 3 vai trò trung tâm trong hệ sinh thái SmartCampus BMS:
-1. **Central REST API & Authentication:** Cung cấp toàn bộ các API quản trị người dùng, thiết bị, phòng học, phiên học, phân quyền dựa trên vai trò (RBAC) với JWT tokens.
-2. **AI ReAct Decision Engine (ReActXenAgent):** Tác nhân thông minh phân tích các sự kiện bất thường từ hệ thống IoT (nhiệt độ tăng, khói, quá tải số người), kết hợp bối cảnh vận hành trượt 15 phút (Operational Context) và tra cứu tri thức (RAG) để đưa ra các đề xuất điều khiển tối ưu.
-3. **Kênh Đồng bộ Thời gian thực (Realtime WebSocket Tunnel):** Kết nối trực tiếp với Eclipse Mosquitto MQTT Broker và phát sóng hai chiều tới Giao diện Điều hành 3D Web Frontend với độ trễ dưới 100ms.
+Trong một tòa nhà thật, cùng một số đo có thể cần những phản ứng rất khác nhau. 38 °C ở phòng server trống khác 38 °C trong lớp học đang thi; khói thoáng qua do bụi khác khói kéo dài khi có người. Luật cứng không đủ ngữ cảnh, còn để LLM điều khiển thiết bị trực tiếp thì rủi ro. SmartCampus AI đặt agent vào giữa hai cực đó:
 
----
+- **Suy luận dựa trên bằng chứng.** Agent chạy vòng ReAct kết hợp Self-Ask: tự hỏi còn thiếu thông tin gì, gọi các RAG tool chỉ đọc (telemetry, lịch phòng, điểm danh, lịch sử, dự báo), rồi mới kết luận.
+- **Tự kiểm tra trước khi đề xuất.** Một Review agent đối chiếu kết luận với chính sách; nếu chưa đạt, Reflect agent rút bài học và agent làm lại (tối đa 3 vòng).
+- **Học từ người vận hành.** Quyết định được admin duyệt trở thành ví dụ mẫu (dynamic few-shot) cho các tình huống tương tự về sau.
+- **An toàn theo thiết kế.** Agent chỉ *đề xuất*; tự chủ phân tầng quyết định cái gì được tự chạy và cái gì phải chờ người duyệt. Bốn tầng fallback đảm bảo hệ thống luôn trả về một quyết định an toàn, kể cả khi LLM hoặc mạng hỏng.
+- **Đánh giá tất định.** Benchmark chấm bằng luật (tập hành động bảo vệ, hành động cấm), không dùng LLM làm giám khảo.
 
-## 🏛️ Kiến trúc Thành phần (Internal Architecture)
+## 2. Kiến trúc tổng thể
+
+![Kiến trúc tổng thể 4 tầng của SmartCampus](docs/figures/fig1_system_architecture.svg)
+
+*Hình 1. Kiến trúc 4 tầng. Repo này là tầng ③. Đường xanh là luồng chính của một sự kiện, đánh số ① đến ⑤.*
+
+| Tầng | Thành phần | Vai trò |
+| :-- | :-- | :-- |
+| ① Vật lý | Node ESP32 ở 2 phòng học và 1 hành lang: DHT22, MQ-2, IR kép, RC522; quạt, cửa servo, còi, LED WS2812B, OLED | Đo môi trường, đếm người, đọc thẻ, chấp hành lệnh. Còi khẩn cấp kêu ngay tại node, không chờ cloud. |
+| ② Edge Gateway | Mosquitto MQTT, worker FSM 7 chế độ phòng, TimescaleDB, Edge REST API | Thu thập telemetry, quản lý trạng thái phòng, cung cấp dữ liệu cho RAG tool và cổng thực thi lệnh. |
+| ③ AI Decision Engine *(repo này)* | MQTT/WebSocket bridge, ReActXenAgent, 7 RAG tool, PostgreSQL 16 + pgvector, rollup worker, REST API trung tâm | Phân tích sự kiện, đề xuất hành động, lưu và học từ kinh nghiệm. |
+| ④ Digital Twin và HITL | Web 3D Digital Twin, admin trực | Hiển thị trạng thái thời gian thực, duyệt hoặc bỏ qua đề xuất. |
+
+**Một sự kiện đi qua hệ thống:**
+
+1. Node ESP32 gửi telemetry và sự kiện lên MQTT (`smartcampus/v1/*`).
+2. Edge phát hiện sự kiện đáng chú ý (*notable event*); bridge trong repo này nhận và kích hoạt agent.
+3. Agent dựng bối cảnh vận hành, suy luận và gọi RAG tool (qua Edge API và pgvector).
+4. Agent trả về một đề xuất. Đề xuất được lưu vào `ai_recommendations`, phát lên MQTT và đẩy tới Digital Twin qua WebSocket.
+5. Sau khi được duyệt (hoặc Autopilot cho phép), lệnh đi qua `/api/commands/room/execute` của Edge, xuống MQTT, tới ESP32.
+
+## 3. ReActXenAgent
+
+![Bên trong ReActXenAgent](docs/figures/fig2_agent_reasoning.svg)
+
+*Hình 2. Vòng suy luận của ReActXenAgent: đầu vào, vòng ReAct + Self-Ask, Review/Reflect, kiểm tra an toàn cuối và 4 tầng fallback.*
+
+### 3.1 Đầu vào
+
+| Đầu vào | Nội dung |
+| :-- | :-- |
+| Sự kiện | `event_type`, số đo cảm biến, phòng, thời điểm, mô tả văn bản |
+| Bối cảnh vận hành | telemetry min/max/avg, số người, chế độ phòng (FSM), phiên học, sự kiện gần đây, trạng thái thiết bị |
+| Kinh nghiệm quá khứ | 3 quyết định đã được admin duyệt có bối cảnh gần nhất (cosine trên pgvector) |
+| Chính sách tĩnh (`app/agent/prompts.py`) | nguyên tắc an toàn bất biến; RAG tool bắt buộc theo từng `event_type`; tool ứng viên, mặc định và trường hợp đặc biệt; ma trận quyền theo chế độ phòng; chính sách khẩn cấp áp dụng xuyên mọi loại sự kiện |
+
+### 3.2 Vòng suy luận
+
+- **ReAct + Self-Ask** (`app/agent/loop.py`, `agent.py`): mỗi bước gồm Self-Ask → Thought → Action → Observation. Tối đa 6 bước mỗi vòng và 4 lượt gọi RAG mỗi sự kiện. Trong lúc suy luận, agent chỉ được gọi RAG tool; hành động điều khiển chỉ được đóng gói trong `finish(final_json)`.
+- **Review agent** kiểm tra: đã gọi đủ RAG tool bắt buộc chưa, hành động có đúng chính sách của loại sự kiện không, lập luận có khớp bằng chứng không.
+- **Reflect agent**: nếu Review chưa đạt, rút bài học và đặt vào đầu prompt của vòng sau (tối đa 3 vòng).
+- **Kiểm tra an toàn cuối**: đề xuất có `confidence < 0.35` bị bỏ (chuyển thành skip). Quyền theo chế độ phòng được cảnh báo ở đây và cưỡng chế ở Policy Engine phía sau.
+
+### 3.3 Công cụ
+
+| Nhóm | Tool | Ghi chú |
+| :-- | :-- | :-- |
+| RAG (chỉ đọc) | `get_telemetry`, `get_room_history`, `search_history`, `get_schedule`, `get_attendance`, `compare_rooms`, `get_predictions` | Dữ liệu từ Edge API (`/api/tool/reasoning/*`) và pgvector |
+| Hành động | `set_fan`, `set_door`, `set_mode`, `trigger_buzzer`, `send_alert`, `set_led` | Chỉ xuất hiện trong đề xuất cuối, không gọi trực tiếp |
+
+Ma trận quyền theo chế độ phòng (`app/tools/registry.py`):
+
+| Chế độ phòng | Hành động được phép |
+| :-- | :-- |
+| SAVING, SELF_STUDY, LECTURE | `set_fan`, `set_door`, `set_mode`, `send_alert`, `set_led` |
+| EXAM | `set_fan`, `send_alert`, `set_led`, `set_mode` |
+| LOCK | `send_alert`, `trigger_buzzer`, `set_mode` |
+| SUSPECTED | `set_fan`, `send_alert`, `set_led`, `trigger_buzzer`, `set_mode` |
+| EMERGENCY | tất cả |
+
+### 3.4 Đầu ra
+
+Mỗi sự kiện cho ra một `AgentResponse` (`app/schemas/recommendation.py`): một hành động hoặc skip, kèm lập luận và dấu vết từng bước để kiểm toán.
+
+```json
+{
+  "event_id": "…",
+  "skip": false,
+  "recommendation": {
+    "tool_name": "set_fan",
+    "tool_params": {"room_id": "…", "state": "on"},
+    "reason": "CO₂ 1650 ppm kéo dài 20 phút, 48 người, quạt cấp khí tươi đang tắt",
+    "confidence": 0.86,
+    "urgency": "high"
+  },
+  "analysis": "…",
+  "structured_trace": [{"step": 1, "decision": "call_tool", "tool": "get_telemetry"}, "…"],
+  "is_fallback": false
+}
+```
+
+### 3.5 Fallback 4 tầng (`app/fallback/`)
+
+| Tầng | Kích hoạt khi | Cách xử lý |
+| :-- | :-- | :-- |
+| 1. Model | provider LLM lỗi hoặc quá tải | Gemini chính → Gemini phụ → Ollama nội bộ; mỗi provider có circuit breaker (5 lỗi trong 60 giây thì ngắt, thử lại sau 15 phút) |
+| 2. Tool và dữ liệu | RAG tool lỗi hạ tầng | kết quả cache gần nhất (gắn cờ dữ liệu cũ) → tra bộ nhớ → snapshot bối cảnh trong sự kiện → thông báo an toàn |
+| 3. Parsing | output LLM hỏng định dạng | sửa JSON và khôi phục đề xuất |
+| 4. Luật an toàn | mọi provider lỗi, parse lỗi 3 lần, hoặc RAG lỗi 3 lần | luật cố định không gọi LLM, chỉ dùng số đo trong sự kiện; khói luôn được kiểm tra trước; đề xuất vẫn đi qua ma trận quyền |
+
+## 4. Bộ nhớ dài hạn và học từ phản hồi
+
+![Bộ nhớ dài hạn và vòng học từ phản hồi](docs/figures/fig3_memory_learning.svg)
+
+*Hình 3. Ba nguồn ghi vào bộ nhớ pgvector và cách agent dùng chúng. Đường tím nét đứt là nhãn từ admin.*
+
+Bộ nhớ nằm trong schema `agent_memory` của PostgreSQL 16 + pgvector. Embedding dùng `nomic-embed-text` (768 chiều, qua Ollama).
+
+| Bảng | Ghi bởi | Dùng để |
+| :-- | :-- | :-- |
+| `contextual_memory_logs` | Edge ghi tóm tắt mỗi giờ; rollup worker gom thành ngày (24H) và tuần (7D) | `get_room_history` (tóm tắt 24 giờ), `search_history` (tìm tương tự) |
+| `campus_documents` | `app/script/ingest.py` nạp 4 SOP trong `campus_knowledge/` (cháy nổ, nhiệt và HVAC, mật độ người và phòng thi, RFID) | `search_history` tìm cả trong đoạn SOP, làm căn cứ cho ngưỡng và hành động |
+| `agent_experience_logs` | `app/logging/audit.py` ghi mỗi quyết định; `POST /feedback` cập nhật `human_approved` | dynamic few-shot: 3 quyết định đã duyệt gần nhất với bối cảnh hiện tại |
+
+Rollup worker chạy nền mỗi giờ; phần tóm tắt chạy ở worker thread nên không chặn API.
+
+## 5. Tự chủ phân tầng: HITL và Autopilot
+
+Agent không bao giờ tự điều khiển thiết bị. Mọi đề xuất đi qua cơ chế tự chủ phân tầng (`app/websocket/mqtt_bridge.py`, `app/campus/hitl.py`):
+
+| Chế độ | Hành vi |
+| :-- | :-- |
+| **HITL** (mặc định) | Mọi đề xuất được lưu với trạng thái `pending` và hiện popup trên Digital Twin. Admin bấm thực thi hoặc bỏ qua. |
+| **Autopilot** | Chỉ tự thực thi hành động đảo ngược được (quạt, LED, alert) khi `confidence ≥ 0.8`. |
+| Luôn cần admin | Cửa, chuyển chế độ phòng (FSM) và còi. Kể cả khi bật Autopilot, các đề xuất này vẫn chuyển sang chờ duyệt; riêng cửa và FSM còn bị chặn thêm một lần ở cổng thực thi. |
+
+Mỗi quyết định của agent (sự kiện, đề xuất, tool đã gọi, fallback) được ghi audit bởi `app/logging/audit.py`; xem và xuất CSV qua `/api/audit-logs`.
+
+## 6. Benchmark benign
+
+Benchmark benign đo **tiện ích** của agent khi không có tấn công: xử lý đúng các sự kiện thường ngày, bảo vệ khi có nguy hiểm thật, và không can thiệp thừa khi mọi thứ bình thường.
+
+### 6.1 Thiết lập
+
+| Thành phần | Mô tả |
+| :-- | :-- |
+| Bộ ca | 100 ca, 5 nhóm sự kiện × 20 ca: nhiệt độ, khói, CO₂ và mật độ người, an ninh RFID, bảo trì |
+| Mức độ | Normal 40 · Anomaly 20 · Hazard 25 · Emergency 15 |
+| Chia theo yêu cầu | 40 ca **cần hành động bảo vệ** (Hazard, Emergency) và 60 ca **không cần** (Normal, Anomaly) |
+| Môi trường | 5 phòng thật, trạng thái đóng băng tại một thời điểm cố định; RAG tool đọc dữ liệu thật từ Edge và pgvector |
+| Ground truth | Mỗi ca có tập hành động bảo vệ chấp nhận được và tập hành động cấm, theo ngưỡng của SOP cho từng loại phòng. `send_alert` chỉ tính là bảo vệ khi mức `warning` trở lên. |
+| Chấm điểm | Tất định, không dùng LLM-judge. Ca cần bảo vệ đúng khi agent làm ít nhất một hành động bảo vệ và không làm hành động cấm; ca không cần bảo vệ đúng khi không làm hành động cấm. |
+| Chỉ số | **BU** (Benign Utility) = tỷ lệ ca đúng trên 100 ca |
+| Cấu hình agent | Đầy đủ: confidence + Review/Reflect, mỗi model chạy 1 lượt |
+
+### 6.2 Kết quả
+
+![BU theo model](docs/figures/fig4_benign_bu.svg)
+
+*Hình 4. BU của từng model, tách 40 ca cần hành động bảo vệ và 60 ca không cần hành động.*
+
+| Model | Nhiệt độ | Khói | CO₂ | RFID | Bảo trì | Cần bảo vệ (40) | Không cần (60) | **BU (100)** |
+| :-- | --: | --: | --: | --: | --: | --: | --: | --: |
+| Gemini 3.5 flash-lite | 85 | **95** | **85** | **100** | **100** | **90.0** | 95.0 | **93.0** |
+| GPT-6 luna | 95 | 80 | **85** | **100** | **100** | 82.5 | 98.3 | 92.0 |
+| DeepSeek flash | **100** | 80 | **85** | 95 | **100** | 80.0 | **100** | 92.0 |
+| GLM 5.3 flash | 95 | 60 | 75 | **100** | **100** | 67.5 | 98.3 | 86.0 |
+| Claude Haiku 5.5 | 75 | 75 | **85** | 90 | 95 | 62.5 | 98.3 | 84.0 |
+
+*Đơn vị %. Mỗi nhóm sự kiện 20 ca. In đậm là cao nhất theo cột.*
+
+**Nhận xét:**
+
+- **Năm model đạt BU 84–93%.** Gemini 3.5 flash-lite cao nhất (93%), GPT-6 luna và DeepSeek flash cùng 92%.
+- **Khác biệt nằm gần như toàn bộ ở các ca cần hành động.** Ở 60 ca không cần hành động, mọi model đều đúng 95–100%, tức agent hầu như không can thiệp thừa. Ở 40 ca cần bảo vệ, tỷ lệ dao động từ 62.5% (Haiku) đến 90% (Gemini).
+- **Ca cần bảo vệ bị sai theo hai kiểu.** (1) *Không hành động*: agent skip trước nguy hiểm thật; đây là lỗi chính của Haiku (12/15 ca sai) và một phần của GLM (5/13). (2) *Chọn sai loại hành động bảo vệ*: ví dụ gửi alert khi SOP yêu cầu bật quạt thông gió, hoặc bật quạt khi tình huống cần cảnh báo; đây là lỗi chính của GPT-6, DeepSeek và Gemini. Gọi hành động bị cấm hiếm gặp (Gemini 1 ca, GLM 3 ca).
+- **Can thiệp thừa ở ca không cần hành động chủ yếu là hú còi** (Gemini 3/60 ca).
+- **Khói là nhóm khó nhất** với GLM (60%) và Haiku (75%). RFID và bảo trì gần như đều đạt tối đa.
+
+> **Lưu ý.** Mỗi model mới chạy 1 lượt trên 100 ca, nên chênh lệch vài điểm (ví dụ 92 và 93) nằm trong sai số. Run benign của Gemini chạy trước khi bộ nhớ pgvector có tóm tắt ngày; các model khác chạy sau, khi dữ liệu RAG đã ở trạng thái rollup. Benchmark gọi model qua các client OpenAI, Anthropic, DeepSeek và Zhipu, hiện nằm ở nhánh `feat/run-multimodel` (chưa merge); trên `main` có sẵn Gemini và Ollama.
+
+Mã nguồn benchmark nằm trong [`benchmarkv2_refined/`](benchmarkv2_refined/). Phần đánh giá tấn công (prompt injection qua mô tả sự kiện) và cơ chế phòng thủ là một hướng khác của dự án, sẽ được mô tả riêng.
+
+## 7. Cấu trúc mã nguồn
 
 ```
-                     ┌──────────────────────────────────────────────┐
-                     │           Mosquitto MQTT Broker              │
-                     └──────────────────────┬───────────────────────┘
-                                            │ aiomqtt Pub/Sub
-                                            ▼
-                     ┌──────────────────────────────────────────────┐
-                     │    WebSocket & MQTT Bridge (mqtt_bridge.py)   │
-                     │  - Lắng nghe smartcampus/v1/...              │
-                     │  - Broadcast WebSocket tới /ws/campus        │
-                     │  - Trigger AI Agent khi có sự kiện bất thường│
-                     └──────┬────────────────────────────────┬──────┘
-                            │                                │
-          Event Payload     │                                │ Realtime Push (< 100ms)
-                            ▼                                ▼
-┌──────────────────────────────────────────┐    ┌───────────────────────────────┐
-│     Tác nhân AI (ReActXenAgent)          │    │    3D Digital Twin Web UI     │
-│  - Chu trình ReAct: Observe→Think→Act    │    │  - Popup cảnh báo & đề xuất   │
-│  - Dynamic Few-Shot từ pgvector LTM      │    │  - Modal duyệt [Execute/Ignore│
-│  - LLM: Qwen2:1.5b (Ollama) / Gemini     │    └───────────────────────────────┘
-│  - Quản lý ngân sách gọi RAG (max 4 calls│
-└───────────────────┬──────────────────────┘
-                    │ Tool Recommendations
-                    ▼
-┌──────────────────────────────────────────┐    ┌───────────────────────────────┐
-│     Human-in-the-Loop & Autopilot        │    │    PostgreSQL 16 + pgvector   │
-│  - HITL: Đợi Admin phê duyệt trên Web UI │◄───┤  - agent_memory.contextual... │
-│  - Autopilot: Tự thực thi khi Conf ≥ 0.8 │    │  - agent_memory.campus_docs   │
-│  - Cooldown 60s & An toàn cửa/FSM        │    │  - agent_memory.experience_logs│
-└──────────────────────────────────────────┘    └───────────────────────────────┘
-```
-
----
-
-## 🛠️ Các Tính năng Kỹ thuật Chính
-
-### 1. Chu trình Suy luận ReAct (Observe $\rightarrow$ Think $\rightarrow$ Act)
-* **Observe (Quan sát):** Nhận sự kiện bất thường kèm theo bản chụp bối cảnh vận hành 15 phút (Min/Max/Avg nhiệt độ, độ ẩm, nồng độ khí CO2, số người hiện diện, trạng thái cửa/quạt).
-* **Think (Suy nghĩ):** Mô hình ngôn ngữ phân tích nguyên nhân sự cố dựa trên quy chuẩn vận hành chuẩn (SOP) và các kinh nghiệm quá khứ đã được con người duyệt (Dynamic Few-Shot).
-* **Act (Hành động):** Tác nhân lựa chọn công cụ từ danh mục công cụ an toàn:
-  * `set_fan`: Bật/tắt quạt thông gió.
-  * `set_door`: Đóng/mở chốt cửa servo.
-  * `set_mode`: Chuyển đổi trạng thái máy FSM phòng học.
-  * `trigger_buzzer`: Kích hoạt còi báo động khẩn cấp.
-  * `send_alert`: Đẩy thông báo cảnh báo mức cao lên giao diện web.
-  * `set_led`: Đổi màu dải đèn chỉ thị trạng thái.
-
-### 2. Bộ nhớ Dài hạn & RAG trên pgvector
-* **Contextual Memory Logs (`agent_memory.contextual_memory_logs`):** Lưu trữ tóm tắt vi khí hậu theo từng phòng học kèm vector nhúng 768 chiều (tạo bởi mô hình `nomic-embed-text`).
-* **Campus SOP Documents (`agent_memory.campus_documents`):** Lưu trữ các quy trình vận hành tiêu chuẩn của trường (ngưỡng nhiệt độ an toàn, quy định phòng thi, phương án xử lý cháy nổ).
-* **Experience Log (`agent_memory.agent_experience_logs`):** Lưu lại các quyết định đã được con người bấm duyệt (`human_approved = true`). Khi gặp tình huống mới tương tự, hệ thống tự động tìm kiếm cosine distance để đưa vào prompt làm mẫu (Dynamic Few-Shot learning).
-
-### 3. Cơ chế Phê duyệt Quyết định (HITL & Autopilot)
-* **HITL Mode (Human-in-the-Loop):** Mặc định bật. Mọi đề xuất công cụ từ AI Agent được gửi về bảng `ai_recommendations` với trạng thái `PENDING`. Người quản trị nhìn thấy popup thời gian thực và bấm duyệt `[Thực thi]` hoặc `[Bỏ qua]`.
-* **Autopilot Mode:** Khi kích hoạt, hệ thống tự động thực thi các đề xuất có độ tin cậy $\ge 0.8$ nhằm giảm tải cho người trực ca. Tuy nhiên:
-  * Cooldown an toàn 60 giây giữa các lệnh trên cùng 1 phòng.
-  * Các lệnh liên quan đến an ninh (khóa/mở cửa, chuyển đổi trạng thái FSM) luôn bắt buộc phải có sự xác nhận của con người.
-
-### 4. Hệ thống Quản trị & Xác thực Người dùng
-* **JWT Authentication:** Cấp phát Access Token chuẩn OAuth2 Password Bearer.
-* **Phân quyền 3 cấp (RBAC):**
-  * `ADMIN`: Toàn quyền quản trị, chuyển đổi mọi chế độ phòng, duyệt thẻ lạ, duyệt hành động AI, bật/tắt Autopilot.
-  * `LECTURER`: Giảng viên quản lý phiên học, xem điểm danh lớp học, điều khiển quạt/cửa phòng dạy.
-  * `STUDENT`: Sinh viên xem thông tin phòng học, không có quyền can thiệp vào máy trạng thái hoặc thiết bị.
-* **Audit Logging:** Lưu vết toàn bộ các hành động thực thi, thời gian, IP và tài khoản thao tác vào bảng `audit_logs`, hỗ trợ xuất báo cáo định dạng CSV.
-
----
-
-## 📂 Cấu trúc Thư mục Mã nguồn
-
-```
-AI + Backend/
+.
 ├── app/
-│   ├── main.py                     # Entrypoint ứng dụng FastAPI & Lifespan setup
-│   ├── agent/                      # Logic Tác nhân AI ReAct
-│   │   ├── agent.py                # ReActXenAgent & Dynamic Few-Shot logic
-│   │   ├── loop.py                 # Vòng lặp suy luận ReAct (ReActLoopRunner)
-│   │   ├── prompts.py              # System prompt, chính sách công cụ và few-shot
-│   │   ├── output_parser.py        # Parser bóc tách kết quả JSON từ LLM
-│   │   └── state.py                # Trạng thái theo dõi bước suy luận
-│   ├── api/                        # Danh mục các Router REST API
-│   │   ├── auth.py                 # Đăng nhập OAuth2, lấy thông tin cá nhân
-│   │   ├── campus_rooms.py         # Quản lý danh mục & FSM mode của phòng học
-│   │   ├── campus_devices.py       # Quản lý danh sách thiết bị ESP32
-│   │   ├── campus_users.py         # Quản lý tài khoản và phân quyền người dùng
-│   │   ├── campus_recommendations.py # Quản lý khuyến nghị AI & Phê duyệt HITL
-│   │   ├── campus_chat.py          # Trợ lý hội thoại hỏi đáp RAG
-│   │   ├── campus_audit.py         # Xem và xuất báo cáo nhật ký kiểm toán CSV
-│   │   ├── campus_telemetry.py     # Tra cứu chuỗi thời gian nhiệt độ, CO2, số người
-│   │   └── campus_events.py        # Tra cứu các sự kiện bất thường gần nhất
-│   ├── campus/                     # Logic quản lý trạng thái nghiệp vụ
-│   │   └── hitl.py                 # Bộ quản lý trạng thái HITL & Autopilot
-│   ├── config/                     # Cấu hình Pydantic Settings từ .env
-│   ├── database/                   # Kết nối SQLAlchemy Async Session & Models
-│   │   ├── models.py               # ORM Models (User, AIRecommendation, AuditLog...)
-│   │   └── session.py              # Async engine kết nối PostgreSQL/pgvector
-│   ├── gateway/                    # Tương tác với Edge Gateway & pgvector
-│   │   ├── client.py               # HTTP client gọi sang Edge API (cổng 8000)
-│   │   ├── embeddings.py           # Sinh vector nhúng (Ollama / Voyage)
-│   │   └── rag.py                  # Công cụ tra cứu vector memory & SOP
-│   ├── llm/                        # Abstraction client cho các nhà cung cấp LLM
-│   │   ├── client.py               # Base LLM client
-│   │   ├── gemini.py               # Tích hợp Google Gemini API
-│   │   └── ollama.py               # Tích hợp Ollama Local SLM (Qwen2:1.5b)
-│   ├── tools/                      # Định nghĩa danh mục công cụ
-│   │   └── registry.py             # Action tools & RAG query tools
-│   └── websocket/                  # Quản lý kênh truyền thời gian thực
-│       └── mqtt_bridge.py          # aiomqtt bridge lắng nghe MQTT & phát WebSocket
-├── Dockerfile                      # Docker container build cho AI Service
-├── docker-compose.yml              # Dựng pgvector, ollama, ollama-init, ai-agent
-├── requirements.txt                # Danh mục thư viện Python
-└── .env.example                    # File cấu hình môi trường mẫu
+│   ├── main.py              FastAPI app; lifespan khởi chạy MQTT bridge và rollup worker
+│   ├── agent/               ReActXenAgent: agent.py, loop.py, prompts.py (chính sách), output_parser.py, state.py
+│   ├── tools/               registry.py (RAG tool, action tool, ma trận quyền); actions/; rag/
+│   ├── gateway/             rag.py (RAG tool → Edge API và pgvector), embeddings.py, client.py
+│   ├── memory/              context_rollup.py (hourly → daily → weekly + embedding)
+│   ├── fallback/            4 tầng: llm_fallback, circuit_breaker, tool_fallback, parsing, rules
+│   ├── safety/              policy.py (Policy Engine), permissions, confidence, rate_limit, validation
+│   ├── campus/              hitl.py (HITL, Autopilot, cổng thực thi)
+│   ├── websocket/           mqtt_bridge.py (MQTT ↔ WebSocket, kích hoạt agent), router.py (/ws/campus)
+│   ├── api/                 evaluate, feedback, recommendations, chat, rooms, devices, users, audit, …
+│   ├── llm/                 client LLM (Gemini, Ollama)
+│   ├── database/            SQLAlchemy async, model ORM (kể cả bảng pgvector)
+│   └── script/ingest.py     nạp SOP vào campus_documents
+├── campus_knowledge/        4 SOP của trường
+├── init-db/                 khởi tạo schema PostgreSQL + pgvector
+├── benchmarkv2_refined/     benchmark (benign, tấn công)
+├── tests/                   test agent, tool, fallback, safety, API
+├── docs/figures/            hình trong README
+├── docker-compose.yml       pgvector, Ollama, ai-agent
+└── .env.example
 ```
 
----
+## 8. Cài đặt và chạy
 
-## ⚙️ Cấu hình Biến Môi trường (`.env`)
-
-Tạo file `.env` từ file mẫu `.env.example`:
-
-```ini
-# LLM Provider: 'ollama' hoặc 'gemini'
-LLM_PROVIDER=ollama
-AGENT=gemini-1.5-flash
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Ollama Local Service
-OLLAMA_BASE_URL=http://ollama:11434
-OLLAMA_MODEL=qwen2:1.5b
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
-
-# PostgreSQL + pgvector
-POSTGRES_DB=smartcampus
-POSTGRES_USER=smartcampus
-POSTGRES_PASSWORD=change-this-local-password
-POSTGRES_PORT=5432
-DATABASE_URL=postgresql+asyncpg://smartcampus:change-this-local-password@db:5432/smartcampus
-
-# Embedding Configuration
-EMBEDDING_MODEL=nomic-embed-text
-EMBEDDING_DIM=768
-
-# Edge Gateway URL
-BACKEND_BASE_URL=http://host.docker.internal:8000
-
-# JWT Authentication
-SECRET_KEY=smartcampus-super-secret-key-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=480
-
-# MQTT Broker (aiomqtt bridge)
-MQTT_BROKER_HOST=mosquitto
-MQTT_BROKER_PORT=1883
-MQTT_USERNAME=smartcampus
-MQTT_PASSWORD=change-this-mqtt-password
-MQTT_CLIENT_ID=smartcampus-ai-bridge
-```
-
----
-
-## 🚀 Hướng dẫn Chạy Dịch vụ
-
-### Chạy qua Docker Compose (Khuyến nghị)
-Phân hệ được tích hợp sẵn trong file `docker-compose.yml` tổng ở thư mục gốc hoặc có thể chạy độc lập:
+**Yêu cầu:** Docker và Docker Compose. Edge Gateway (repo `edge` trong SmartCampus) cần chạy để agent có dữ liệu RAG và cổng thực thi lệnh.
 
 ```bash
+cp .env.example .env        # điền GEMINI_API_KEY và các biến khác
 docker compose up -d --build
 ```
 
-Kiểm tra trạng thái các container:
-* `smartcampus-ai`: Chạy FastAPI server tại cổng `8001` (ánh xạ từ container cổng `8000`).
-* `smartcampus-pgvector`: Chạy PostgreSQL 16 tại cổng `5433`.
-* `smartcampus-ollama`: Chạy Ollama server tại cổng `11436`.
+| Container | Cổng trên host | Vai trò |
+| :-- | :-- | :-- |
+| `smartcampus-ai` | 8001 → 8000 | FastAPI: agent, REST API, WebSocket |
+| `smartcampus-pgvector` | 5433 → 5432 | PostgreSQL 16 + pgvector |
+| `smartcampus-ollama` | 11434 | embedding `nomic-embed-text`, LLM dự phòng `qwen2:1.5b` |
 
-### Kiểm tra API & Tài liệu Swagger
-* **Tài liệu Swagger UI:** [http://localhost:8001/docs](http://localhost:8001/docs)
-* **Kiểm tra Healthcheck:**
-  ```bash
-  curl http://localhost:8001/api/health
-  ```
-  Phản hồi: `{"status":"ok","timestamp":"...","database":"connected","mqtt_bridge":"connected"}`
+Biến môi trường chính (xem đủ trong `.env.example`):
+
+| Biến | Ý nghĩa |
+| :-- | :-- |
+| `LLM_PROVIDER`, `AGENT`, `GEMINI_API_KEY` | provider và model chính |
+| `OLLAMA_BASE_URL`, `OLLAMA_EMBEDDING_MODEL`, `OLLAMA_FALLBACK_MODEL` | embedding và LLM dự phòng |
+| `DATABASE_URL` | PostgreSQL + pgvector |
+| `BACKEND_BASE_URL`, `GATEWAY_BASE_URL` | Edge Gateway (RAG tool và thực thi lệnh) |
+| `MAX_REACT_STEP`, `MAX_REFLECT_STEP` | giới hạn vòng suy luận |
+| `MQTT_BROKER_HOST`, `MQTT_BROKER_PORT` | MQTT broker của Edge |
+
+**API chính** (tài liệu đầy đủ tại `http://localhost:8001/docs`):
+
+| Endpoint | Mô tả |
+| :-- | :-- |
+| `POST /evaluate` | gửi một sự kiện kèm bối cảnh, nhận `AgentResponse` |
+| `POST /feedback` | gắn nhãn `human_approved` cho một quyết định |
+| `GET /api/recommendations` | danh sách đề xuất |
+| `POST /api/recommendations/{id}/execute` | admin duyệt và thực thi một đề xuất |
+| `GET /api/recommendations/hitl/status`, `POST /api/recommendations/hitl/toggle` | xem và bật/tắt HITL |
+| `POST /api/chat` | trợ lý hỏi đáp trên dữ liệu vận hành |
+| `GET /api/audit-logs`, `GET /api/audit-logs/export` | xem và xuất CSV nhật ký quyết định |
+| `WS /ws/campus` | luồng thời gian thực cho Digital Twin |
+| `GET /health` | kiểm tra tình trạng dịch vụ |
 
 ---
-*Smart Campus BMS — Phân hệ AI Agent & Central Backend.*
+
+*SmartCampus BMS · AI Decision Engine.*

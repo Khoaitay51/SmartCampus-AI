@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <title>ReActXenAgent: vòng suy luận ReAct, Review, Reflect và fallback</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a3a38"/>
+    </marker>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2a78d6"/>
+    </marker>
+    <marker id="aro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#eb6834"/>
+    </marker>
+    <style>
+      .grp{fill:none;stroke:#8a8984;stroke-width:1.4;stroke-dasharray:6 4}
+      .gt{font-size:15px;font-weight:700;fill:#0b0b0b}
+      .gs{font-size:11.5px;fill:#52514e}
+      .box{fill:#ffffff;stroke:#3a3a38;stroke-width:1.2}
+      .bt{font-size:13px;font-weight:600;fill:#0b0b0b}
+      .bd{font-size:11.5px;fill:#52514e}
+      .ln{fill:none;stroke:#3a3a38;stroke-width:1.5}
+      .lb{fill:none;stroke:#2a78d6;stroke-width:2}
+      .lo{fill:none;stroke:#eb6834;stroke-width:1.8}
+      .al{font-size:11px;fill:#52514e;font-style:italic}
+      .step{fill:#eaf2fc;stroke:#2a78d6;stroke-width:1.4}
+    </style>
+  </defs>
+  <rect width="1200" height="700" fill="#fcfcfb"/>
+
+  <!-- ============ Đầu vào ============ -->
+  <rect x="14" y="14" width="236" height="500" rx="12" fill="#eef6f1"/>
+  <rect x="14" y="14" width="236" height="500" rx="12" class="grp"/>
+  <text x="30" y="40" class="gt">Đầu vào</text>
+
+  <rect x="28" y="56" width="208" height="78" rx="8" class="box"/>
+  <text x="40" y="78" class="bt">Sự kiện bất thường</text>
+  <text x="40" y="97" class="bd">event_type · số đo cảm biến</text>
+  <text x="40" y="113" class="bd">phòng · thời điểm</text>
+  <text x="40" y="129" class="bd">mô tả văn bản (description)</text>
+
+  <rect x="28" y="148" width="208" height="94" rx="8" class="box"/>
+  <text x="40" y="170" class="bt">Bối cảnh vận hành</text>
+  <text x="40" y="189" class="bd">telemetry min/max/avg</text>
+  <text x="40" y="205" class="bd">số người · chế độ phòng (FSM)</text>
+  <text x="40" y="221" class="bd">phiên học · sự kiện gần đây</text>
+  <text x="40" y="237" class="bd">trạng thái thiết bị</text>
+
+  <rect x="28" y="256" width="208" height="94" rx="8" class="box"/>
+  <text x="40" y="278" class="bt">Kinh nghiệm quá khứ</text>
+  <text x="40" y="297" class="bd">top-3 quyết định đã được</text>
+  <text x="40" y="313" class="bd">admin duyệt, gần nhất theo</text>
+  <text x="40" y="329" class="bd">cosine (pgvector)</text>
+  <text x="40" y="345" class="bd" font-style="italic">→ dynamic few-shot</text>
+
+  <rect x="28" y="364" width="208" height="134" rx="8" class="box"/>
+  <text x="40" y="386" class="bt">Chính sách tĩnh</text>
+  <text x="40" y="405" class="bd">nguyên tắc an toàn (bất biến)</text>
+  <text x="40" y="421" class="bd">RAG bắt buộc theo event_type</text>
+  <text x="40" y="437" class="bd">tool ứng viên / mặc định /</text>
+  <text x="40" y="453" class="bd">  trường hợp đặc biệt</text>
+  <text x="40" y="469" class="bd">ma trận quyền theo chế độ phòng</text>
+  <text x="40" y="485" class="bd">chính sách khẩn cấp xuyên event</text>
+
+  <!-- gom đầu vào → prompt -->
+  <path d="M236,95 H258 V280" class="ln"/>
+  <path d="M236,195 H258" class="ln"/>
+  <path d="M236,303 H258" class="ln"/>
+  <path d="M236,430 H258 V280" class="ln"/>
+  <path d="M258,280 H286" class="ln" marker-end="url(#ar)"/>
+  <text x="262" y="272" class="al">prompt</text>
+
+  <!-- ============ Vòng ReAct ============ -->
+  <rect x="290" y="14" width="560" height="262" rx="12" fill="#eef3fb"/>
+  <rect x="290" y="14" width="560" height="262" rx="12" fill="none" stroke="#2a78d6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="306" y="40" class="gt">Vòng ReAct + Self-Ask</text>
+  <text x="306" y="57" class="gs">≤ 6 bước mỗi vòng · ≤ 4 lượt gọi RAG mỗi sự kiện</text>
+
+  <rect x="308" y="78" width="150" height="58" rx="8" class="step"/>
+  <text x="322" y="100" class="bt">Self-Ask</text>
+  <text x="322" y="118" class="bd">còn thiếu thông tin gì?</text>
+
+  <rect x="496" y="78" width="150" height="58" rx="8" class="step"/>
+  <text x="510" y="100" class="bt">Thought</text>
+  <text x="510" y="118" class="bd">suy luận từ bằng chứng</text>
+
+  <rect x="684" y="78" width="150" height="58" rx="8" class="step"/>
+  <text x="698" y="100" class="bt">Action</text>
+  <text x="698" y="118" class="bd">gọi 1 RAG tool</text>
+
+  <rect x="496" y="176" width="150" height="58" rx="8" class="step"/>
+  <text x="510" y="198" class="bt">Observation</text>
+  <text x="510" y="216" class="bd">kết quả tool → scratchpad</text>
+
+  <path d="M458,107 H494" class="lb" marker-end="url(#arb)"/>
+  <path d="M646,107 H682" class="lb" marker-end="url(#arb)"/>
+  <path d="M759,136 V205 H648" class="lb" marker-end="url(#arb)"/>
+  <path d="M496,205 H383 V138" class="lb" marker-end="url(#arb)"/>
+  <text x="392" y="196" class="al">lặp lại</text>
+
+  <!-- RAG tools -->
+  <rect x="884" y="14" width="300" height="262" rx="12" fill="#f3f0fb"/>
+  <rect x="884" y="14" width="300" height="262" rx="12" class="grp"/>
+  <text x="900" y="40" class="gt">7 RAG tool (chỉ đọc)</text>
+  <text x="900" y="57" class="gs">Edge API + bộ nhớ pgvector</text>
+  <g class="bd">
+    <text x="904" y="84"><tspan font-weight="600" fill="#0b0b0b">get_telemetry</tspan>  chuỗi số đo</text>
+    <text x="904" y="106"><tspan font-weight="600" fill="#0b0b0b">get_room_history</tspan>  tóm tắt 24h</text>
+    <text x="904" y="128"><tspan font-weight="600" fill="#0b0b0b">search_history</tspan>  tìm sự kiện tương tự</text>
+    <text x="904" y="150"><tspan font-weight="600" fill="#0b0b0b">get_schedule</tspan>  lịch phòng</text>
+    <text x="904" y="172"><tspan font-weight="600" fill="#0b0b0b">get_attendance</tspan>  điểm danh</text>
+    <text x="904" y="194"><tspan font-weight="600" fill="#0b0b0b">compare_rooms</tspan>  so sánh phòng</text>
+    <text x="904" y="216"><tspan font-weight="600" fill="#0b0b0b">get_predictions</tspan>  dự báo xu hướng</text>
+  </g>
+  <text x="900" y="250" class="gs">Agent không chạm thiết bị khi suy luận:</text>
+  <text x="900" y="266" class="gs">hành động chỉ đóng gói trong finish.</text>
+  <path d="M834,96 H882" class="ln" marker-end="url(#ar)" marker-start="url(#ar)"/>
+
+  <!-- ============ Kết thúc vòng ============ -->
+  <path d="M834,126 H860 V318 H780 V330" class="lb" marker-end="url(#arb)"/>
+  <text x="852" y="300" class="al" text-anchor="end">finish(final_json)</text>
+
+  <rect x="600" y="332" width="250" height="80" rx="8" class="box"/>
+  <text x="614" y="354" class="bt">Review agent</text>
+  <text x="614" y="373" class="bd">đã gọi đủ RAG bắt buộc chưa?</text>
+  <text x="614" y="389" class="bd">hành động đúng chính sách event?</text>
+  <text x="614" y="405" class="bd">lập luận khớp bằng chứng?</text>
+
+  <!-- quyết định -->
+  <path d="M725,412 V436" class="ln" marker-end="url(#ar)"/>
+  <polygon points="725,440 795,470 725,500 655,470" fill="#ffffff" stroke="#3a3a38" stroke-width="1.2"/>
+  <text x="725" y="474" class="bt" text-anchor="middle" font-size="12">Accomplished?</text>
+
+  <!-- Không → Reflect -->
+  <path d="M655,470 H532" class="lo" marker-end="url(#aro)"/>
+  <text x="600" y="462" class="al">không</text>
+  <rect x="290" y="432" width="240" height="76" rx="8" class="box"/>
+  <text x="304" y="454" class="bt">Reflect agent</text>
+  <text x="304" y="473" class="bd">rút bài học từ góp ý của Review,</text>
+  <text x="304" y="489" class="bd">ghi reflection vào đầu prompt</text>
+  <path d="M410,432 V300 H383 V276" class="lo" marker-end="url(#aro)"/>
+  <text x="418" y="372" class="al">vòng mới (tối đa 3)</text>
+
+  <!-- Có → final safety -->
+  <path d="M795,470 H866 V339 H882" class="lb" marker-end="url(#arb)"/>
+  <text x="808" y="462" class="al">có</text>
+  <rect x="884" y="300" width="300" height="78" rx="8" class="box"/>
+  <text x="898" y="322" class="bt">Kiểm tra an toàn cuối</text>
+  <text x="898" y="341" class="bd">confidence &lt; 0.35 → bỏ đề xuất (skip)</text>
+  <text x="898" y="357" class="bd">quyền theo chế độ phòng: cảnh báo,</text>
+  <text x="898" y="373" class="bd">Policy Engine quyết định sau</text>
+  <path d="M1034,378 V396" class="lb" marker-end="url(#arb)"/>
+
+  <rect x="884" y="398" width="300" height="110" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="898" y="421" class="bt">AgentResponse</text>
+  <text x="898" y="441" class="bd">1 hành động (tool + tham số + confidence)</text>
+  <text x="898" y="457" class="bd">hoặc skip + lý do</text>
+  <text x="898" y="473" class="bd">analysis · structured trace · tool log</text>
+  <text x="898" y="495" class="bd" font-style="italic">→ tự chủ phân tầng (HITL / Autopilot)</text>
+
+  <!-- ============ Fallback 4 tầng ============ -->
+  <rect x="14" y="530" width="1170" height="160" rx="12" fill="#fbf1ea"/>
+  <rect x="14" y="530" width="1170" height="160" rx="12" fill="none" stroke="#eb6834" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="30" y="556" class="gt">Fallback 4 tầng</text>
+  <text x="160" y="556" class="gs">bọc quanh mọi bước: hệ thống luôn trả về một quyết định an toàn, kể cả khi LLM hoặc mạng hỏng</text>
+
+  <rect x="28" y="570" width="270" height="92" rx="8" class="box"/>
+  <text x="42" y="592" class="bt">Tầng 1 · Model</text>
+  <text x="42" y="611" class="bd">Gemini chính → Gemini phụ → Ollama</text>
+  <text x="42" y="627" class="bd">mỗi provider một circuit breaker</text>
+  <text x="42" y="643" class="bd">(5 lỗi/60 s → ngắt, thử lại sau)</text>
+
+  <rect x="318" y="570" width="270" height="92" rx="8" class="box"/>
+  <text x="332" y="592" class="bt">Tầng 2 · Tool &amp; dữ liệu</text>
+  <text x="332" y="611" class="bd">RAG lỗi → cache gần nhất (gắn cờ cũ)</text>
+  <text x="332" y="627" class="bd">→ tra bộ nhớ → snapshot ngữ cảnh</text>
+  <text x="332" y="643" class="bd">→ thông báo an toàn</text>
+
+  <rect x="608" y="570" width="270" height="92" rx="8" class="box"/>
+  <text x="622" y="592" class="bt">Tầng 3 · Parsing</text>
+  <text x="622" y="611" class="bd">sửa JSON hỏng, khôi phục đề xuất</text>
+  <text x="622" y="627" class="bd">từ output lỗi định dạng</text>
+
+  <rect x="898" y="570" width="272" height="92" rx="8" class="box"/>
+  <text x="912" y="592" class="bt">Tầng 4 · Luật an toàn</text>
+  <text x="912" y="611" class="bd">không gọi LLM, chỉ dùng số đo trong event</text>
+  <text x="912" y="627" class="bd">khói luôn được kiểm tra trước</text>
+  <text x="912" y="643" class="bd">đề xuất vẫn qua ma trận quyền</text>
+
+  <text x="30" y="680" class="al">→ tầng 4 khi: mọi provider lỗi · parse lỗi 3 lần · RAG lỗi 3 lần</text>
+</svg>

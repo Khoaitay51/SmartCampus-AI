@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <title>SmartCampus: kiến trúc tổng thể 4 tầng</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a3a38"/>
+    </marker>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2a78d6"/>
+    </marker>
+    <style>
+      .grp{fill:none;stroke:#8a8984;stroke-width:1.4;stroke-dasharray:6 4}
+      .gt{font-size:15px;font-weight:700;fill:#0b0b0b}
+      .gs{font-size:11.5px;fill:#52514e}
+      .box{fill:#ffffff;stroke:#3a3a38;stroke-width:1.2}
+      .bt{font-size:13px;font-weight:600;fill:#0b0b0b}
+      .bd{font-size:11.5px;fill:#52514e}
+      .ln{fill:none;stroke:#3a3a38;stroke-width:1.5}
+      .lb{fill:none;stroke:#2a78d6;stroke-width:2}
+      .al{font-size:11px;fill:#52514e;font-style:italic}
+      .num{fill:#2a78d6}
+      .nt{font-size:11px;font-weight:700;fill:#ffffff}
+    </style>
+  </defs>
+  <rect width="1200" height="640" fill="#fcfcfb"/>
+
+  <!-- ============ Tầng 1: vật lý ============ -->
+  <rect x="14" y="14" width="240" height="560" rx="12" fill="#eef6f1"/>
+  <rect x="14" y="14" width="240" height="560" rx="12" class="grp"/>
+  <text x="30" y="40" class="gt">① Tầng vật lý (IoT)</text>
+  <text x="30" y="57" class="gs">ESP32 · 2 phòng học + 1 hành lang</text>
+
+  <g>
+    <rect x="28" y="74" width="212" height="128" rx="8" class="box"/>
+    <rect x="40" y="86" width="22" height="16" rx="3" fill="#1baf7a"/><rect x="45" y="90" width="12" height="8" fill="#eef6f1"/>
+    <text x="70" y="99" class="bt">Phòng học 1, 2</text>
+    <text x="40" y="124" class="bd">Cảm biến: DHT22 · MQ-2</text>
+    <text x="40" y="140" class="bd">IR kép (đếm người) · RC522</text>
+    <text x="40" y="162" class="bd">Chấp hành: quạt · cửa servo</text>
+    <text x="40" y="178" class="bd">còi · LED WS2812B · OLED</text>
+    <text x="40" y="194" class="bd">Nút giả lập kịch bản</text>
+  </g>
+  <g>
+    <rect x="28" y="222" width="212" height="76" rx="8" class="box"/>
+    <rect x="40" y="234" width="22" height="16" rx="3" fill="#1baf7a"/><rect x="45" y="238" width="12" height="8" fill="#eef6f1"/>
+    <text x="70" y="247" class="bt">Hành lang</text>
+    <text x="40" y="270" class="bd">RC522 + OLED + LED + còi</text>
+    <text x="40" y="286" class="bd">Đăng ký thẻ lạ (chờ admin duyệt)</text>
+  </g>
+  <text x="30" y="330" class="gs">Còi khẩn cấp kêu ngay tại node,</text>
+  <text x="30" y="346" class="gs">không chờ cloud (an toàn cục bộ).</text>
+
+  <!-- ============ Tầng 2: Edge ============ -->
+  <rect x="284" y="14" width="270" height="560" rx="12" fill="#eef3fb"/>
+  <rect x="284" y="14" width="270" height="560" rx="12" class="grp"/>
+  <text x="300" y="40" class="gt">② Edge Computing Gateway</text>
+  <text x="300" y="57" class="gs">FastAPI · MQTT worker · TimescaleDB</text>
+
+  <rect x="298" y="74" width="242" height="54" rx="8" class="box"/>
+  <text x="312" y="96" class="bt">Mosquitto MQTT broker</text>
+  <text x="312" y="115" class="bd">namespace smartcampus/v1/*</text>
+
+  <rect x="298" y="146" width="242" height="84" rx="8" class="box"/>
+  <text x="312" y="168" class="bt">MQTT worker + FSM phòng</text>
+  <text x="312" y="188" class="bd">7 chế độ: SAVING · SELF_STUDY</text>
+  <text x="312" y="204" class="bd">LECTURE · EXAM · LOCK</text>
+  <text x="312" y="220" class="bd">SUSPECTED · EMERGENCY</text>
+
+  <g>
+    <path d="M298,262 v54 a121,12 0 0 0 242,0 v-54" class="box"/>
+    <ellipse cx="419" cy="262" rx="121" ry="12" class="box"/>
+    <text x="312" y="296" class="bt">TimescaleDB</text>
+    <text x="312" y="314" class="bd">telemetry, sự kiện, điểm danh</text>
+  </g>
+
+  <rect x="298" y="352" width="242" height="96" rx="8" class="box"/>
+  <text x="312" y="374" class="bt">Edge REST API</text>
+  <text x="312" y="394" class="bd">/api/tool/reasoning/*</text>
+  <text x="312" y="410" class="bd">  (dữ liệu cho RAG tool, chỉ đọc)</text>
+  <text x="312" y="430" class="bd">/api/commands/room/execute</text>
+
+  <!-- ============ Tầng 3: AI Decision Engine ============ -->
+  <rect x="584" y="14" width="322" height="560" rx="12" fill="#fbf1ea"/>
+  <rect x="584" y="14" width="322" height="560" rx="12" fill="none" stroke="#eb6834" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <text x="600" y="40" class="gt">③ AI Decision Engine</text>
+  <text x="600" y="57" class="gs">repo này · FastAPI · PostgreSQL 16 + pgvector</text>
+
+  <rect x="598" y="74" width="294" height="54" rx="8" class="box"/>
+  <text x="612" y="96" class="bt">MQTT ↔ WebSocket bridge</text>
+  <text x="612" y="115" class="bd">nhận notable event, kích hoạt agent</text>
+
+  <rect x="598" y="146" width="294" height="118" rx="8" fill="#ffffff" stroke="#eb6834" stroke-width="2.2"/>
+  <circle cx="622" cy="172" r="11" fill="#eb6834"/><circle cx="622" cy="172" r="4.5" fill="#ffffff"/>
+  <text x="640" y="177" class="bt" font-size="14">ReActXenAgent</text>
+  <text x="612" y="200" class="bd">ReAct + Self-Ask, Review → Reflect (≤ 3 vòng)</text>
+  <text x="612" y="217" class="bd">Dynamic few-shot từ kinh nghiệm đã duyệt</text>
+  <text x="612" y="234" class="bd">Fallback 4 tầng (model · tool · parse · luật)</text>
+  <text x="612" y="251" class="bd">LLM: Gemini (chính) · Ollama (dự phòng)</text>
+
+  <rect x="598" y="284" width="294" height="54" rx="8" class="box"/>
+  <text x="612" y="306" class="bt">7 RAG tool (chỉ đọc)</text>
+  <text x="612" y="325" class="bd">telemetry · lịch · điểm danh · lịch sử · dự báo…</text>
+
+  <g>
+    <path d="M598,370 v70 a147,12 0 0 0 294,0 v-70" class="box"/>
+    <ellipse cx="745" cy="370" rx="147" ry="12" class="box"/>
+    <text x="612" y="402" class="bt">Bộ nhớ dài hạn (pgvector)</text>
+    <text x="612" y="420" class="bd">tóm tắt ngữ cảnh ngày/tuần · SOP campus</text>
+    <text x="612" y="436" class="bd">kinh nghiệm đã được admin duyệt</text>
+  </g>
+
+  <rect x="598" y="476" width="294" height="42" rx="8" class="box"/>
+  <text x="612" y="502" class="bd"><tspan class="bt">Rollup worker</tspan>  giờ → ngày → tuần + embedding</text>
+
+  <rect x="598" y="526" width="294" height="38" rx="8" class="box"/>
+  <text x="612" y="550" class="bd"><tspan class="bt">Central REST API</tspan>  JWT · RBAC · audit log</text>
+
+  <!-- ============ Tầng 4: Digital Twin & HITL ============ -->
+  <rect x="936" y="14" width="250" height="560" rx="12" fill="#f3f0fb"/>
+  <rect x="936" y="14" width="250" height="560" rx="12" class="grp"/>
+  <text x="952" y="40" class="gt">④ Digital Twin &amp; HITL</text>
+  <text x="952" y="57" class="gs">Web 3D · người duyệt cuối cùng</text>
+
+  <rect x="950" y="74" width="222" height="70" rx="8" class="box"/>
+  <rect x="962" y="86" width="24" height="17" rx="2" fill="none" stroke="#6250d6" stroke-width="1.6"/><path d="M968,108 h12" stroke="#6250d6" stroke-width="1.6"/>
+  <text x="994" y="99" class="bt">Digital Twin 3D</text>
+  <text x="962" y="122" class="bd">WebSocket /ws/campus</text>
+  <text x="962" y="138" class="bd">trạng thái phòng thời gian thực</text>
+
+  <rect x="950" y="166" width="222" height="132" rx="8" class="box"/>
+  <text x="962" y="188" class="bt">Tự chủ phân tầng</text>
+  <text x="962" y="210" class="bd">HITL (mặc định): mọi đề xuất</text>
+  <text x="962" y="226" class="bd">chờ admin duyệt / bỏ qua</text>
+  <text x="962" y="248" class="bd">Autopilot: chỉ quạt · LED · alert</text>
+  <text x="962" y="264" class="bd">khi confidence ≥ 0.8</text>
+  <text x="962" y="286" class="bd">Cửa · FSM · còi: luôn cần admin</text>
+
+  <rect x="950" y="320" width="222" height="80" rx="8" class="box"/>
+  <circle cx="976" cy="346" r="9" fill="none" stroke="#6250d6" stroke-width="1.8"/>
+  <path d="M962,374 a14,12 0 0 1 28,0" fill="none" stroke="#6250d6" stroke-width="1.8"/>
+  <text x="1000" y="351" class="bt">Admin trực</text>
+  <text x="1000" y="369" class="bd">duyệt · bỏ qua · phản hồi</text>
+  <text x="1000" y="385" class="bd">(nhãn cho kinh nghiệm)</text>
+
+  <!-- ============ Luồng ============ -->
+  <!-- 1. telemetry/sự kiện: phòng → MQTT -->
+  <path d="M240,110 H268 V101 H296" class="lb" marker-end="url(#arb)"/>
+  <!-- lệnh: MQTT → phòng -->
+  <path d="M298,118 H276 V180 H242" class="ln" marker-end="url(#ar)"/>
+  <text x="246" y="196" class="al">lệnh</text>
+  <!-- hành lang ↔ MQTT -->
+  <path d="M240,260 H262 V122 " class="ln" stroke-dasharray="3 3"/>
+  <!-- MQTT ↔ worker -->
+  <path d="M419,128 V144" class="ln" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <!-- worker → Timescale -->
+  <path d="M419,230 V248" class="ln" marker-end="url(#ar)"/>
+  <!-- Timescale → Edge API -->
+  <path d="M419,328 V350" class="ln" marker-end="url(#ar)"/>
+  <!-- 2. MQTT → bridge -->
+  <path d="M540,101 H596" class="lb" marker-end="url(#arb)"/>
+  <text x="545" y="94" class="al">notable</text>
+  <!-- bridge → agent -->
+  <path d="M745,128 V144" class="lb" marker-end="url(#arb)"/>
+  <!-- 3. agent ↔ RAG tools -->
+  <path d="M745,264 V282" class="lb" marker-end="url(#arb)" marker-start="url(#arb)"/>
+  <!-- RAG → Edge API -->
+  <path d="M598,320 H570 V390 H542" class="ln" marker-end="url(#ar)"/>
+  <text x="567" y="345" class="al" text-anchor="end">HTTP</text>
+  <!-- RAG → pgvector -->
+  <path d="M745,338 V356" class="ln" marker-end="url(#ar)"/>
+  <!-- Edge tóm tắt giờ → pgvector -->
+  <path d="M540,300 H560 V452 H596" class="ln" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+  <text x="440" y="470" class="al">tóm tắt mỗi giờ</text>
+  <!-- rollup ↔ pgvector -->
+  <path d="M745,474 V460" class="ln" marker-end="url(#ar)"/>
+  <!-- bridge → Digital Twin (WebSocket) -->
+  <path d="M892,101 H948" class="ln" marker-end="url(#ar)"/>
+  <text x="896" y="94" class="al">WS</text>
+  <!-- 4. agent → tự chủ phân tầng -->
+  <path d="M892,205 H920 V228 H948" class="lb" marker-end="url(#arb)"/>
+  <text x="896" y="196" class="al">đề xuất</text>
+  <!-- tự chủ ↔ admin -->
+  <path d="M1061,298 V318" class="ln" marker-end="url(#ar)" marker-start="url(#ar)"/>
+  <!-- admin duyệt → kinh nghiệm (pgvector) -->
+  <path d="M950,380 H918 V420 H894" class="ln" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+  <text x="900" y="436" class="al">duyệt</text>
+  <!-- 5. lệnh đã duyệt → Edge execute -->
+  <path d="M1061,400 V600 H419 V450" class="lb" marker-end="url(#arb)"/>
+  <text x="640" y="594" class="al" fill="#2a78d6">lệnh đã duyệt → /api/commands/room/execute → MQTT → ESP32</text>
+
+  <!-- số thứ tự luồng -->
+  <g><circle cx="268" cy="88" r="9" class="num"/><text x="268" y="92" text-anchor="middle" class="nt">1</text></g>
+  <g><circle cx="568" cy="114" r="9" class="num"/><text x="568" y="118" text-anchor="middle" class="nt">2</text></g>
+  <g><circle cx="768" cy="273" r="9" class="num"/><text x="768" y="277" text-anchor="middle" class="nt">3</text></g>
+  <g><circle cx="920" cy="250" r="9" class="num"/><text x="920" y="254" text-anchor="middle" class="nt">4</text></g>
+  <g><circle cx="1080" cy="430" r="9" class="num"/><text x="1080" y="434" text-anchor="middle" class="nt">5</text></g>
+
+  <!-- chú thích -->
+  <g font-size="11.5" fill="#52514e">
+    <path d="M30,622 H58" class="lb" marker-end="url(#arb)"/><text x="64" y="626">luồng chính: ① cảm biến → ② sự kiện → ③ suy luận + RAG → ④ đề xuất → ⑤ duyệt &amp; thực thi</text>
+    <path d="M720,622 H748" class="ln" stroke-dasharray="4 3" marker-end="url(#ar)"/><text x="754" y="626">luồng dữ liệu cho bộ nhớ dài hạn</text>
+  </g>
+</svg>

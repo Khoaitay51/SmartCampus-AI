@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 470" width="1200" height="470" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <title>Bộ nhớ dài hạn pgvector và vòng học từ phản hồi của admin</title>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a3a38"/>
+    </marker>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2a78d6"/>
+    </marker>
+    <marker id="arv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6250d6"/>
+    </marker>
+    <style>
+      .grp{fill:none;stroke:#8a8984;stroke-width:1.4;stroke-dasharray:6 4}
+      .gt{font-size:15px;font-weight:700;fill:#0b0b0b}
+      .gs{font-size:11.5px;fill:#52514e}
+      .box{fill:#ffffff;stroke:#3a3a38;stroke-width:1.2}
+      .bt{font-size:13px;font-weight:600;fill:#0b0b0b}
+      .bd{font-size:11.5px;fill:#52514e}
+      .mono{font-family:Consolas,'Courier New',monospace;font-size:12px;font-weight:600;fill:#0b0b0b}
+      .ln{fill:none;stroke:#3a3a38;stroke-width:1.5}
+      .lb{fill:none;stroke:#2a78d6;stroke-width:2}
+      .lv{fill:none;stroke:#6250d6;stroke-width:1.8;stroke-dasharray:5 3}
+      .al{font-size:11px;fill:#52514e;font-style:italic}
+    </style>
+  </defs>
+  <rect width="1200" height="470" fill="#fcfcfb"/>
+
+  <!-- ============ Nguồn ghi ============ -->
+  <rect x="14" y="14" width="300" height="370" rx="12" fill="#eef6f1"/>
+  <rect x="14" y="14" width="300" height="370" rx="12" class="grp"/>
+  <text x="30" y="40" class="gt">Nguồn ghi vào bộ nhớ</text>
+
+  <rect x="28" y="56" width="272" height="84" rx="8" class="box"/>
+  <text x="42" y="78" class="bt">Edge Gateway</text>
+  <text x="42" y="97" class="bd">tóm tắt telemetry từng phòng mỗi giờ</text>
+  <text x="42" y="113" class="bd">(nhiệt, CO₂, khói, số người, sự kiện)</text>
+  <text x="42" y="129" class="bd" font-style="italic">period = hourly</text>
+
+  <rect x="28" y="158" width="272" height="100" rx="8" class="box"/>
+  <text x="42" y="180" class="bt">SOP campus (4 văn bản)</text>
+  <text x="42" y="199" class="bd">cháy nổ · nhiệt &amp; HVAC</text>
+  <text x="42" y="215" class="bd">mật độ người &amp; phòng thi · RFID</text>
+  <text x="42" y="231" class="bd">campus_knowledge/*.md</text>
+  <text x="42" y="247" class="bd">nạp bằng app/script/ingest.py</text>
+
+  <rect x="28" y="276" width="272" height="92" rx="8" class="box"/>
+  <text x="42" y="298" class="bt">Mỗi quyết định của agent</text>
+  <text x="42" y="317" class="bd">sự kiện · ngữ cảnh · tool đề xuất</text>
+  <text x="42" y="333" class="bd">ghi bởi app/logging/audit.py</text>
+  <text x="42" y="349" class="bd" font-style="italic">human_approved: chờ admin</text>
+
+  <!-- ============ pgvector ============ -->
+  <rect x="352" y="14" width="456" height="370" rx="12" fill="#fbf1ea"/>
+  <rect x="352" y="14" width="456" height="370" rx="12" fill="none" stroke="#eb6834" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="368" y="40" class="gt">PostgreSQL 16 + pgvector · schema agent_memory</text>
+  <text x="368" y="57" class="gs">embedding nomic-embed-text (768 chiều, qua Ollama) · tìm theo cosine</text>
+
+  <!-- bảng 1 -->
+  <path d="M370,80 v58 a210,10 0 0 0 420,0 v-58" class="box"/>
+  <ellipse cx="580" cy="80" rx="210" ry="10" class="box"/>
+  <text x="386" y="110" class="mono">contextual_memory_logs</text>
+  <text x="386" y="128" class="bd">hourly → daily (24H) → weekly (7D), mỗi bản ghi kèm embedding</text>
+
+  <!-- bảng 2 -->
+  <path d="M370,178 v58 a210,10 0 0 0 420,0 v-58" class="box"/>
+  <ellipse cx="580" cy="178" rx="210" ry="10" class="box"/>
+  <text x="386" y="208" class="mono">campus_documents</text>
+  <text x="386" y="226" class="bd">đoạn SOP: vector + full-text search</text>
+
+  <!-- bảng 3 -->
+  <path d="M370,276 v58 a210,10 0 0 0 420,0 v-58" class="box"/>
+  <ellipse cx="580" cy="276" rx="210" ry="10" class="box"/>
+  <text x="386" y="306" class="mono">agent_experience_logs</text>
+  <text x="386" y="324" class="bd">context_embedding · tool đã đề xuất · human_approved</text>
+
+  <!-- Rollup worker -->
+  <rect x="352" y="400" width="456" height="56" rx="8" class="box"/>
+  <text x="368" y="423" class="bt">Rollup worker (chạy nền mỗi giờ) → <tspan class="mono">contextual_memory_logs</tspan></text>
+  <text x="368" y="442" class="bd">gom hourly → daily, daily → weekly; tóm tắt chạy ở worker thread, không chặn API</text>
+
+  <!-- ============ Dùng khi suy luận ============ -->
+  <rect x="846" y="14" width="340" height="370" rx="12" fill="#eef3fb"/>
+  <rect x="846" y="14" width="340" height="370" rx="12" class="grp"/>
+  <text x="862" y="40" class="gt">Dùng khi agent suy luận</text>
+
+  <rect x="860" y="68" width="312" height="74" rx="8" class="box"/>
+  <text x="874" y="90" class="bt">RAG tool về lịch sử</text>
+  <text x="874" y="109" class="bd">get_room_history: tóm tắt 24 giờ gần nhất</text>
+  <text x="874" y="125" class="bd">search_history: tóm tắt tương tự (cosine)</text>
+
+  <rect x="860" y="166" width="312" height="74" rx="8" class="box"/>
+  <text x="874" y="188" class="bt">Tra cứu quy định</text>
+  <text x="874" y="207" class="bd">search_history tìm cả trong đoạn SOP:</text>
+  <text x="874" y="223" class="bd">căn cứ cho ngưỡng và hành động</text>
+
+  <rect x="860" y="264" width="312" height="90" rx="8" fill="#ffffff" stroke="#2a78d6" stroke-width="2"/>
+  <text x="874" y="286" class="bt">Dynamic few-shot</text>
+  <text x="874" y="305" class="bd">top-3 quyết định có human_approved</text>
+  <text x="874" y="321" class="bd">gần nhất với bối cảnh hiện tại,</text>
+  <text x="874" y="337" class="bd">chèn vào prompt của ReActXenAgent</text>
+
+  <!-- luồng ghi -->
+  <path d="M300,98 H330 V110 H368" class="ln" marker-end="url(#ar)"/>
+  <path d="M300,208 H368" class="ln" marker-end="url(#ar)"/>
+  <path d="M300,322 H368" class="ln" marker-end="url(#ar)"/>
+  <!-- luồng đọc -->
+  <path d="M790,108 H858" class="lb" marker-end="url(#arb)"/>
+  <path d="M790,206 H858" class="lb" marker-end="url(#arb)"/>
+  <path d="M790,306 H858" class="lb" marker-end="url(#arb)"/>
+
+  <!-- vòng phản hồi admin -->
+  <rect x="860" y="400" width="312" height="56" rx="8" class="box"/>
+  <circle cx="884" cy="420" r="7" fill="none" stroke="#6250d6" stroke-width="1.7"/>
+  <path d="M873,442 a11,9 0 0 1 22,0" fill="none" stroke="#6250d6" stroke-width="1.7"/>
+  <text x="906" y="423" class="bt">Admin duyệt / bỏ qua (HITL)</text>
+  <text x="906" y="442" class="bd">POST /feedback cập nhật human_approved</text>
+  <path d="M860,428 H830 V342 H792" class="lv" marker-end="url(#arv)"/>
+  <text x="824" y="392" class="al" text-anchor="end">nhãn từ con người</text>
+</svg>
